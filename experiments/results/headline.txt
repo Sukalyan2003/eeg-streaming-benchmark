@@ -1,0 +1,8 @@
+RESULT 1 (zero-phase regime, win=8 s):
+  boundary RMSE naive=14.930 uV -> overlap(0.5 s)=0.275 uV : reduction 34.7 dB at +-18% latency (0.656 -> 0.540 ms/window).
+
+RESULT 2 (filtfilt length floor):
+  create_bandpass_filter (FIR order 200) needs >= 603 samples (3.02 s) or it silently falls back from zero-phase filtfilt to lfilter.
+  Streaming filters a window of db_chunk_size + 2*overlap. The DEFAULT chunk is 10 s (=> 11 s, filtfilt OK). But chunk_size is clamped only to [0.5, 60] s, so a small client chunk silently enters the fallback regime:
+    e.g. chunk=1 s + overlap=0.5 s = 400 samples (<603) => filtfilt_active=0, interior RMSE=30.67 uV (distorted everywhere, not just seams).
+  Minimum overlap to stay zero-phase at a 1 s chunk: >= 1.01 s each side; or keep chunk + 2*overlap >= 3.02 s.

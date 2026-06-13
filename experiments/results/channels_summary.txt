@@ -1,0 +1,8 @@
+Part 1 — channel canonicalization: family accuracy 89.5% on 19 real-world name variants (non-EEG channels correctly identified for montage exclusion).
+
+Part 2 — feature integrity (average-reference alpha bandpower of C3):
+  channel-aware average (4 EEG chans, ECG excluded): 39.45
+  naive average (ECG included):                            58.68
+  => error from not excluding the ECG channel: +48.7%.
+
+Takeaway: correct quantitative features require channel canonicalization/classification before montage; mixing a mislabeled non-EEG channel into the reference measurably corrupts band power.

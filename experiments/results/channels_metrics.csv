@@ -1,0 +1,20 @@
+raw,canonical,family,expected_family,family_ok,is_eeg
+EEG Fp1-REF,FP1,eeg,eeg,1,1
+FP1,FP1,eeg,eeg,1,1
+Fp1,FP1,eeg,eeg,1,1
+POL Fp1,POLFP1,aux,eeg,0,0
+EEG F3-LE,F3,eeg,eeg,1,1
+C3,C3,eeg,eeg,1,1
+EEG C4-REF,C4,eeg,eeg,1,1
+O1,O1,eeg,eeg,1,1
+EEG T3-REF,T7,eeg,eeg,1,1
+EEG T7-REF,T7,eeg,eeg,1,1
+Cz,CZ,eeg,eeg,1,1
+Pz,PZ,eeg,eeg,1,1
+EEG A1-REF,A1,ref_site,eeg,0,0
+ECG,ECG,ecg,ecg,1,0
+EKG,EKG,ecg,ecg,1,0
+EEG EKG1-REF,EKG1,ecg,ecg,1,0
+EMG,EMG,emg,emg,1,0
+EOG,EOG,eog,eog,1,0
+EEG ROC-REF,ROC,eog,eog,1,0

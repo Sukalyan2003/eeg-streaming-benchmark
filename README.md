@@ -92,6 +92,29 @@ overlap-add boundary measurements.
 3. A characterized, memory-bounded multi-tenant streaming design.
 4. An open reference implementation and measurement harness.
 
+## 8b. Preliminary results (already obtained — see `experiments/`)
+
+Driving the real `domain` production filters on synthetic ground truth
+(`experiments/FINDINGS.md`):
+
+1. **Overlap-add eliminates seam artifacts:** in the zero-phase regime (8 s windows), boundary
+   error drops 14.93 µV → 0.275 µV (**≈35 dB**) at **negligible latency cost** (sub-millisecond
+   per window; overhead within measurement noise).
+2. **A `filtfilt` length floor governs the whole thing:** the FIR order-200 bandpass uses
+   zero-phase `filtfilt` only at ≥ 606 samples (3.03 s); below that it silently falls back to
+   causal `lfilter`. The streaming default chunk (10 s + 0.5 s overlap = 11 s) is safely above
+   the floor, but `chunk_size` is configurable down to 0.5 s, and small chunks silently cross
+   into the fallback regime.
+3. **Event mis-timing in the fallback regime:** the fallback path imposes a **+500 ms**
+   uncompensated group-delay shift (zero-phase path: 0 ms); magnitude response is otherwise
+   faithful (passband −0.64 dB, notch −120 dB).
+4. **Channel canonicalization matters for features:** 89.5% family-classification accuracy on
+   real-world name variants (with a `POL`-prefix gap), and omitting channel-aware exclusion of a
+   mislabeled ECG channel inflates average-reference alpha bandpower by **+48.7%**.
+
+These elevate the paper from "overlap-add fixes seams" to a characterization of the
+order/floor/window/overlap interaction with a concrete clinical-impact metric (event timing).
+
 ## 9. Timeline (≈12 weeks)
 
 | Weeks | Milestone |
