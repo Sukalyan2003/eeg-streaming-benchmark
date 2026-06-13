@@ -1,0 +1,15 @@
+Bandpower equivalence — production _compute_psd (Welch 256/128) vs MNE psd_array_welch:
+  Pearson r (relative band powers, all bands x 8 trials) = 0.99123.
+  Max per-band discrepancy (production as-is) = 11.919 percentage points.
+  Per-band mean relative power (production vs MNE):
+     delta: prod  22.86%  mne  22.74%  (max disc 9.707 pp)
+     theta: prod   9.90%  mne   9.25%  (max disc 3.052 pp)
+     alpha: prod  60.76%  mne  62.00%  (max disc 11.919 pp)
+      beta: prod   5.46%  mne   5.04%  (max disc 1.000 pp)
+     gamma: prod   1.02%  mne   0.97%  (max disc 0.165 pp)
+
+Root cause — double Hann tapering:
+  production applies np.hanning() to the whole window AND scipy.welch applies its
+  default per-segment Hann. Disabling the redundant manual taper drops the max
+  discrepancy from 11.92 pp to 0.64 pp (i.e. production then
+  matches MNE). Fix: remove the manual Hann (let welch taper per segment).
