@@ -1,0 +1,327 @@
+% IEEE SPMB conference paper (Paper track). Target length: 6 pages.
+% Compile: pdflatex paper && bibtex paper && pdflatex paper && pdflatex paper
+% Requires IEEEtran.cls (https://www.ctan.org/pkg/ieeetran) and references.bib.
+% Figures are under experiments/results/ (PNG, 300 DPI). If the build runs long, the
+% figure* environments (Figs. 1 and 7) are the first knobs for fitting exactly 6 pages.
+\documentclass[conference]{IEEEtran}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{cite}
+\usepackage{url}
+\graphicspath{{experiments/results/}}
+
+\begin{document}
+
+\title{Correct-by-Construction Real-Time EEG Filtering and Quantitative Features:\\
+A Characterization of Windowing, Phase, and Spectral Estimation in the\\
+Avinya Neurotech Clinical Streaming Pipeline}
+
+\author{\IEEEauthorblockN{Sukalyan Roy}
+\IEEEauthorblockA{Avinya Neurotech\\
+Email: sukalyanroy2003@gmail.com}}
+
+\maketitle
+
+\begin{abstract}
+Browser- and cloud-based clinical EEG review now filters and re-references signals on demand,
+window by window, rather than on whole recordings. We show, by auditing the Avinya Neurotech
+clinical EEG platform against synthetic ground truth and two open clinical datasets, that three
+commonplace design choices silently govern correctness. First, windowed filtering produces
+chunk-seam artifacts unless overlap-add is used; overlap-add removes them by about 35\,dB at
+negligible latency. Second, the zero-phase \texttt{filtfilt} path has a length floor of three
+filter lengths; below it the implementation silently reverts to a causal filter whose
+uncompensated group delay shifts events by up to about 500\,ms---a clinically meaningful error
+that appears only for short streamed chunks. Third, quantitative features require channel-aware
+processing: failing to canonicalize and exclude non-EEG channels before montaging biases
+relative band power by tens of percent on real data, and a redundant analysis-window taper
+biases relative band power by up to about 12 percentage points relative to a reference
+estimator. We give deterministic design criteria (chunk $+\,2\!\cdot\!$overlap $\ge 3\!\cdot\!$taps;
+taper once; canonicalize-then-montage), confirm every finding on real EEG (CHB-MIT, Siena), and
+show the filtering results generalize across FIR order. The contribution is a small, reproducible
+set of correctness invariants for streaming clinical EEG signal processing.
+\end{abstract}
+
+\begin{IEEEkeywords}
+EEG, real-time filtering, zero-phase filtering, overlap-add, montage, quantitative EEG,
+spectral estimation, reproducibility.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Clinical electroencephalography (EEG) is increasingly reviewed through networked, on-demand
+viewers that fetch and process short windows of a recording rather than loading entire studies.
+This shift moves standard digital-signal-processing (DSP) operations---bandpass and notch
+filtering, montage re-referencing, and quantitative-EEG (QEEG) feature extraction---from a
+whole-signal, offline setting into a windowed, real-time, multi-user setting. Operations that are
+textbook-correct offline can become subtly and silently wrong under windowing.
+
+This paper characterizes that gap on the \emph{deployed} Avinya Neurotech clinical EEG platform.
+Rather than propose a new algorithm, we treat the production filtering, montage, and band-power
+code as the system under test and quantify where streaming-time choices break correctness, using
+synthetic signals with known spectra for ground truth and two open clinical datasets for external
+validity. We make five contributions:
+\begin{enumerate}
+\item A reproducible methodology that turns a deployed pipeline into a correctness benchmark, with
+pinned source versions and released code.
+\item The \texttt{filtfilt} length-floor result: a zero-phase filter silently reverts to a causal
+path below a length threshold, producing a measured event mis-timing of up to $\sim$500\,ms for
+short streamed chunks, with a deterministic guard.
+\item A quantification of overlap-add windowed filtering ($\sim$35\,dB seam-artifact reduction at
+negligible latency), generalized across FIR order.
+\item Evidence that canonicalize-then-montage is necessary: including a real ECG channel in an
+average reference biases EEG relative alpha power by $>$100\,\% on real data.
+\item A spectral-estimation equivalence against a reference library that uncovers a
+redundant-taper bias ($\sim$12 percentage points) affecting both Welch and multitaper estimates.
+\end{enumerate}
+
+\section{Background and Related Work}
+\textbf{Streaming and real-time EEG visualization.} Networked EEG viewers serve windowed segments
+to the client; the European Data Format (EDF/EDF+) is the de-facto storage
+format~\cite{kemp1992,kemp2003}. Prior work emphasizes interactivity and scale; the DSP
+correctness of windowed filtering and feature extraction in this setting is largely unexamined.
+
+\textbf{EEG filtering and phase.} Bandpass and notch filtering are standard, and the risks of
+phase distortion and filter transients on event timing are documented for offline
+analysis~\cite{widmann2015,decheveigne2019}. Zero-phase (forward--backward) filtering removes
+phase distortion but is non-causal and requires sufficient data length~\cite{oppenheim2009}. These
+works warn about phase offline; none address a \emph{silent} zero-phase-to-causal fallback inside
+a length-gated streaming filter.
+
+\textbf{Block convolution and boundary artifacts.} Filtering long signals in blocks is classically
+handled by overlap-add/overlap-save~\cite{oppenheim2009,proakis2007}, with routines provided by
+standard libraries~\cite{virtanen2020}. The textbook methods are not characterized for clinical
+EEG streaming, nor parameterized against a zero-phase length floor.
+
+\textbf{Montages and channel nomenclature.} Re-referencing is foundational to EEG
+interpretation~\cite{klem1999}, and channel-naming standardization is an active
+concern~\cite{pernet2019}. Cross-vendor naming inconsistency as a quantitative
+feature-correctness hazard is rarely measured.
+
+\textbf{Spectral band power and QEEG.} Relative band power via Welch~\cite{welch1967} or
+multitaper~\cite{thomson1982} estimation, and amplitude-integrated EEG~\cite{hellstrom2006}, are
+common QEEG features; reference implementations are widely used~\cite{gramfort2013,virtanen2020}.
+Implementation-level estimator errors and their bias on clinical relative band power are
+under-reported.
+
+\section{Methods}
+\subsection{System under test}
+We evaluate the production signal-processing primitives of the Avinya Neurotech platform: an FIR
+bandpass (order 200, designed with \texttt{firwin}) applied with forward--backward zero-phase
+filtering (\texttt{scipy.signal.filtfilt}); an IIR notch (\texttt{iirnotch}) applied with
+\texttt{filtfilt}; a channel-name canonicalization and family-classification module; and a
+Welch/multitaper power spectral density (PSD) routine. A salient detail is that the bandpass
+reverts to causal filtering (\texttt{lfilter} with reflective padding) when the input is shorter
+than three filter lengths, because \texttt{filtfilt} requires $\ge 3\!\cdot\!\mathrm{len(taps)}$
+samples.
+
+\subsection{Synthetic ground truth}
+We generate deterministic, seeded multichannel signals at 200\,Hz with known spectral content:
+band-limited oscillations ($\delta/\theta/\alpha/\beta$) with randomized phases, amplitude-modulated
+bursts, $1/f$ background, and a 50\,Hz mains component. The signal is continuous and
+stationary-in-expectation, so any discontinuity in a windowed reconstruction is attributable to
+the windowing strategy. For feature experiments we add a synthetic ECG-like channel.
+
+\subsection{Windowing strategies and metrics}
+For a signal we compare three strategies driving the \emph{same} production filters:
+\emph{whole-signal} (zero-phase reference), \emph{naive} per-window (each non-overlapping window
+filtered independently), and \emph{overlap-add} (each window filtered within an extended window of
+$\pm$\,overlap seconds of real neighbors, retaining the center). \emph{Boundary error} is the RMS
+error within $\pm$50\,ms of seams versus the reference; \emph{interior error} excludes
+$\pm$0.6\,s. \emph{Event mis-timing} is the shift of a 20\,ms Gaussian transient by peak location
+and cross-correlation. \emph{Canonicalization accuracy} is the family-classification rate.
+\emph{Feature equivalence} compares per-band relative power from the production PSD routine to
+\texttt{mne} (\texttt{psd\_array\_welch}/\texttt{psd\_array\_multitaper}) by Pearson correlation
+and maximum per-band discrepancy in percentage points (pp).
+
+\subsection{Real data and reproducibility}
+We confirm findings on PhysioNet CHB-MIT~\cite{shoeb2009,goldberger2000} (\texttt{chb01\_01},
+256\,Hz, bipolar) for filtering and Siena Scalp EEG~\cite{detti2020} (\texttt{PN00-1}, 512\,Hz,
+10--20 monopolar EEG plus a genuine \texttt{EKG} channel) for channel/feature results. Experiments
+ran against pinned platform source revisions and a fixed environment (Python 3.12; NumPy 2.4.1;
+SciPy 1.17.0; MNE 1.11.0). Generators, metrics, and figures are released; raw EDFs are fetched
+from PhysioNet at run time.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_seam.png}
+\caption{Filtered synthetic EEG across a 1\,s window seam. Naive per-window filtering departs from
+the whole-signal ground truth at the seam; overlap-add (0.5\,s context) tracks it.}
+\label{fig:seam}
+\end{figure}
+
+\section{Results}
+\subsection{R1: Overlap-add eliminates window-seam artifacts}
+With 8\,s windows, naive filtering concentrates error at seams (boundary RMSE 14.93\,$\mu$V) while
+leaving the interior near-exact; overlap-add with 0.5\,s context reduces boundary RMSE to
+0.275\,$\mu$V (34.7\,dB), and 1.0\,s renders it negligible. The per-window overhead is within
+measurement noise, so the correction is effectively free (Figs.~\ref{fig:seam}--\ref{fig:summary}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_profile.png}
+\caption{Mean $|$error$|$ versus distance from a window seam (averaged over seams and channels).
+Naive filtering localizes error at the seam; overlap-add removes it.}
+\label{fig:profile}
+\end{figure}
+
+\subsection{R2: A zero-phase length floor and a silent fallback regime}
+The bandpass uses zero-phase \texttt{filtfilt} only when the input has $\ge 3\!\cdot\!\mathrm{taps}
+= 606$ samples (3.03\,s at 200\,Hz); shorter inputs silently use a causal path. The stream filters
+a window of chunk $+\,2\!\cdot\!$overlap. The platform default chunk (10\,s) with 0.5\,s overlap
+yields 11\,s and is safely zero-phase. However, the chunk size is configurable to 0.5\,s, so a
+small chunk drops below the floor (e.g., a 1\,s chunk with 0.5\,s overlap spans 400\,$<$\,606
+samples) and the filter is no longer zero-phase, with large error throughout the window (interior
+RMSE 30.7\,$\mu$V), not only at seams.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_summary.png}
+\caption{Boundary RMSE by display-window size (left) and per-window filtering latency (right):
+overlap-add removes the seam error across window sizes at near-identical latency.}
+\label{fig:summary}
+\end{figure}
+
+\subsection{R3: Magnitude fidelity and event mis-timing}
+On the zero-phase path the magnitude response realizes the design: passband (1--25\,Hz) gain
+$-0.64\pm1.54$\,dB, 50\,Hz notch $-120$\,dB, 60\,Hz stopband $-120$\,dB (Fig.~\ref{fig:mag}). The
+timing is regime-dependent: a 20\,ms transient is unshifted (0\,ms) on the zero-phase path but is
+displaced by $+500$\,ms on the causal fallback, equal to the uncompensated linear-phase FIR group
+delay $(\mathrm{taps}-1)/2/f_s\approx502$\,ms (Fig.~\ref{fig:shift}). Combined with R2, whenever
+the filter enters the fallback regime, displayed events are mis-timed by about half a second.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_magnitude.png}
+\caption{Production filter magnitude response (zero-phase path): the intended 0.5--30\,Hz passband
+and the 50\,Hz notch are realized; measured gains match the designed $|H|^2$.}
+\label{fig:mag}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_transient_shift.png}
+\caption{Event timing for a 20\,ms transient: the zero-phase path preserves timing (0\,ms); the
+short-window causal fallback shifts the event by $+500$\,ms.}
+\label{fig:shift}
+\end{figure}
+
+\subsection{R4--R5: Channel and feature correctness (synthetic)}
+On 19 curated real-world channel-name variants, family classification is 89.5\,\% accurate;
+classifying \texttt{EEG A1-REF} as a reference site is correct, while \texttt{POL Fp1} as
+auxiliary is a genuine gap (the \texttt{POL} prefix is not stripped). Omitting a mislabeled ECG
+channel from an average reference is required: including it inflates the target channel's alpha
+power by 48.7\,\%. For spectral estimation (Table~\ref{tab:bp}), the production Welch estimate and
+\texttt{mne} are strongly correlated ($r=0.991$) but differ by up to 11.9\,pp due to a
+\emph{double taper} (a manual Hann window plus Welch's per-segment Hann); removing the redundant
+taper reduces the discrepancy to 0.64\,pp. The bias is estimator-agnostic (multitaper: 9.1\,pp
+$\rightarrow$ 0.0\,pp).
+
+\begin{table}[t]
+\caption{Relative band power: production PSD vs.\ MNE (8 trials).}
+\label{tab:bp}
+\centering
+\begin{tabular}{lccc}
+\toprule
+Estimator / taper & Pearson $r$ & max disc.\ (pp) \\
+\midrule
+Welch, double Hann (as shipped)      & 0.991 & 11.9 \\
+Welch, single Hann (fixed)           & ---   & 0.64 \\
+Multitaper, manual Hann (as shipped) & ---   & 9.1  \\
+Multitaper, no manual Hann (fixed)   & ---   & 0.0  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{R6: Real-data confirmation of R1--R3 (CHB-MIT)}
+On CHB-MIT \texttt{chb01\_01} (256\,Hz), overlap-add reduces seam boundary RMSE from 12.96\,$\mu$V
+to 0.049\,$\mu$V (48.5\,dB)---larger than synthetic---with near-zero interior error confirming
+zero-phase behavior (Fig.~\ref{fig:real}). The floor is 606 samples, i.e.\ 2.37\,s at 256\,Hz;
+because it is in samples its duration scales with $f_s$. The fallback shift, by cross-correlation,
+is $+391$\,ms, matching the predicted $(\mathrm{taps}-1)/2/f_s=393$\,ms; the mis-timing is thus
+sampling-rate-dependent ($\sim$393\,ms at 256\,Hz vs.\ $\sim$500\,ms at 200\,Hz).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_realdata_seam.png}
+\caption{CHB-MIT real EEG across a window seam: naive filtering deviates at the seam; overlap-add
+matches the whole-signal reference (48.5\,dB boundary-error reduction).}
+\label{fig:real}
+\end{figure}
+
+\subsection{R7: Generalization across FIR order and robustness}
+The floor equals $3(\mathrm{order}+1)$ taps and the fallback shift equals
+$(\mathrm{taps}-1)/2/f_s$; both scale with FIR order (Table~\ref{tab:order}, Fig.~\ref{fig:order}).
+Sweeping the total filtered length through the floor shows boundary error collapse sharply at the
+threshold. Across 12 seeds the overlap-add reduction is $35.1\pm2.3$\,dB (naive
+$15.9\pm4.1\,\mu$V; overlap-add $0.273\pm0.035\,\mu$V), confirming robustness and generalizing the
+criterion chunk $+\,2\!\cdot\!$overlap $\ge 3\!\cdot\!$taps to any FIR order.
+
+\begin{table}[t]
+\caption{Zero-phase floor and fallback shift scale with FIR order (200\,Hz).}
+\label{tab:order}
+\centering
+\begin{tabular}{cccc}
+\toprule
+FIR order & taps & floor (samples / s) & fallback shift (ms) \\
+\midrule
+100 & 102 & 306 / 1.53 & 255 \\
+200 & 202 & 606 / 3.03 & 505 \\
+300 & 302 & 906 / 4.53 & 755 \\
+400 & 402 & 1206 / 6.03 & 1005 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_order_floor.png}
+\caption{The zero-phase length floor $3(\mathrm{order}+1)$ and the annotated fallback group-delay
+shift both scale with FIR order.}
+\label{fig:order}
+\end{figure}
+
+\subsection{R8: Real-data confirmation of R4--R5 (Siena)}
+On Siena \texttt{PN00-1} (512\,Hz)---29 monopolar 10--20 EEG channels plus a genuine \texttt{EKG}
+channel and SpO$_2$/HR---canonicalization separates all 29 EEG electrodes from the six genuine
+non-EEG channels. Including the real ECG channel in the average reference biases the relative alpha
+power of EEG~C3 by $+127.9$\,\% (3.10\,\% $\rightarrow$ 7.08\,\%)---larger than synthetic---confirming
+on real data that channel-aware exclusion is required. The magnitude is recording-dependent; the
+direction and mechanism are robust.
+
+\section{Discussion}
+The results reduce to a small set of correctness invariants for streaming clinical EEG DSP.
+(1)~\emph{Windowing:} always supply real context and retain only the center (overlap-add).
+(2)~\emph{Zero-phase length:} guarantee $(\mathrm{chunk}+2\!\cdot\!\mathrm{overlap})\,f_s \ge
+3\!\cdot\!\mathrm{len(taps)}$ so the filter never silently leaves the zero-phase regime, and make
+the fallback observable; otherwise event timing---central to spike review and annotation
+alignment---can be off by hundreds of milliseconds. (3)~\emph{Spectral estimation:} taper exactly
+once. (4)~\emph{Montaging:} canonicalize channels and exclude non-EEG families before averaging.
+These are implementation invariants, not new algorithms, yet each is violated by a plausible
+deployed configuration, and each violation is silent.
+
+\emph{Threats to validity.} R1--R3 and R7 rest on deterministic properties of the implementation
+(group delay; the \texttt{filtfilt} length floor) and hold independent of signal content; we
+nonetheless confirm them on real EEG (R6). The magnitudes in R4, R5, and R8 are configuration- and
+recording-dependent, but their direction and mechanism are robust and reproduced on real data. We
+evaluate one platform's implementation; the invariants follow from properties of \texttt{filtfilt},
+linear-phase FIR group delay, and Welch/multitaper tapering common to widely used libraries, and
+are relevant to medical-device software life-cycle assurance~\cite{iec62304}.
+
+\section{Conclusion}
+Moving routine EEG DSP into a windowed, real-time, multi-user setting introduces silent
+correctness failures that offline practice does not anticipate. By auditing a deployed clinical
+platform against synthetic ground truth and two open datasets, we identify and quantify
+four---seam artifacts, a zero-phase length-floor fallback with $\sim$500\,ms event mis-timing, a
+double-taper spectral bias, and non-EEG montage contamination---and give deterministic, low-cost
+remedies. Future work extends the real-data confirmation to larger cohorts and to the platform's
+AI-detection path.
+
+\section*{Reproducibility}
+Code, synthetic generators, metrics, and figure scripts are released; raw clinical EDFs are
+downloaded from PhysioNet at run time. Results were generated against pinned platform source
+revisions.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

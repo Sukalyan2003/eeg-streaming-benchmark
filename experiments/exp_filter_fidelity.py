@@ -132,7 +132,7 @@ def main():
     plt.xlabel("frequency (Hz)"); plt.ylabel("gain (dB)")
     plt.title("Production filter magnitude response (zero-phase path)")
     plt.legend(fontsize=8); plt.tight_layout()
-    plt.savefig(RESULTS / "fig_magnitude.png", dpi=150); plt.close()
+    plt.savefig(RESULTS / "fig_magnitude.png", dpi=300); plt.close()
 
     # ---- fig: transient shift ----
     sl = slice(int((t0 - 0.8) * FS), int((t0 + 0.8) * FS))
@@ -147,7 +147,7 @@ def main():
     plt.xlabel("time (s)"); plt.ylabel("normalized amplitude")
     plt.title("Event timing: zero-phase vs short-window fallback")
     plt.legend(fontsize=8); plt.tight_layout()
-    plt.savefig(RESULTS / "fig_transient_shift.png", dpi=150); plt.close()
+    plt.savefig(RESULTS / "fig_transient_shift.png", dpi=300); plt.close()
     print(f"\nWrote {RESULTS}/fidelity_metrics.csv, fidelity_summary.txt, "
           "fig_magnitude.png, fig_transient_shift.png")
 

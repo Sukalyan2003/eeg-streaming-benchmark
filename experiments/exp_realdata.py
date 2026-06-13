@@ -111,7 +111,7 @@ def main():
     plt.xlabel("time (s)"); plt.ylabel(f"{chans[c]} (µV)")
     plt.title("CHB-MIT real EEG: filtered signal across a window seam")
     plt.legend(fontsize=8); plt.tight_layout()
-    plt.savefig(RESULTS / "fig_realdata_seam.png", dpi=150); plt.close()
+    plt.savefig(RESULTS / "fig_realdata_seam.png", dpi=300); plt.close()
     print(f"\nWrote {RESULTS}/realdata_summary.txt, fig_realdata_seam.png")
 
 

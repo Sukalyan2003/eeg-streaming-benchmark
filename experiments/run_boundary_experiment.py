@@ -165,7 +165,7 @@ def _fig_seam(sig, gt, fs):
     plt.xlabel("time (s)"); plt.ylabel("amplitude (µV)")
     plt.title("Filtered EEG across a 1 s window seam")
     plt.legend(fontsize=8); plt.tight_layout()
-    plt.savefig(RESULTS / "fig_seam.png", dpi=150); plt.close()
+    plt.savefig(RESULTS / "fig_seam.png", dpi=300); plt.close()
 
 
 def _fig_profile(sig, gt, fs):
@@ -192,7 +192,7 @@ def _fig_profile(sig, gt, fs):
     plt.xlabel("time relative to seam (ms)"); plt.ylabel("mean |error| vs ground truth (µV)")
     plt.title("Reconstruction error concentrated at window seams")
     plt.legend(fontsize=8); plt.tight_layout()
-    plt.savefig(RESULTS / "fig_profile.png", dpi=150); plt.close()
+    plt.savefig(RESULTS / "fig_profile.png", dpi=300); plt.close()
 
 
 def _fig_summary(rows):
@@ -214,7 +214,7 @@ def _fig_summary(rows):
     ax[1].plot(wins, olap_l, "o-", label="overlap-add 0.5 s", color="tab:green")
     ax[1].set_xlabel("display window size (s)"); ax[1].set_ylabel("latency (ms per window)")
     ax[1].set_title("Per-window filtering latency"); ax[1].legend(fontsize=8)
-    plt.tight_layout(); plt.savefig(RESULTS / "fig_summary.png", dpi=150); plt.close()
+    plt.tight_layout(); plt.savefig(RESULTS / "fig_summary.png", dpi=300); plt.close()
 
 
 if __name__ == "__main__":

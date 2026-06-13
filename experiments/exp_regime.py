@@ -141,7 +141,7 @@ def main():
                      textcoords="offset points", xytext=(6, -12), fontsize=8)
     plt.xlabel("FIR order"); plt.ylabel("zero-phase length floor (samples)")
     plt.title("filtfilt floor = 3 × (order+1) scales with FIR order")
-    plt.tight_layout(); plt.savefig(RESULTS / "fig_order_floor.png", dpi=150); plt.close()
+    plt.tight_layout(); plt.savefig(RESULTS / "fig_order_floor.png", dpi=300); plt.close()
 
     # fig: transition
     L = [r["total_len_s"] for r in trows]
@@ -153,7 +153,7 @@ def main():
     plt.ylabel("boundary RMSE vs ground truth (µV, log)")
     plt.title("Boundary error collapses once the zero-phase floor is reached")
     plt.legend(fontsize=8); plt.tight_layout()
-    plt.savefig(RESULTS / "fig_transition.png", dpi=150); plt.close()
+    plt.savefig(RESULTS / "fig_transition.png", dpi=300); plt.close()
     print(f"\nWrote regime_order_sweep.csv, regime_transition.csv, regime_summary.txt, "
           "fig_order_floor.png, fig_transition.png")
 

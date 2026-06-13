@@ -1,5 +1,5 @@
 RESULT 1 (zero-phase regime, win=8 s):
-  boundary RMSE naive=14.930 uV -> overlap(0.5 s)=0.275 uV : reduction 34.7 dB at +-18% latency (0.656 -> 0.540 ms/window).
+  boundary RMSE naive=14.930 uV -> overlap(0.5 s)=0.275 uV : reduction 34.7 dB at +3% latency (0.581 -> 0.600 ms/window).
 
 RESULT 2 (filtfilt length floor):
   create_bandpass_filter (FIR order 200) needs >= 603 samples (3.02 s) or it silently falls back from zero-phase filtfilt to lfilter.
