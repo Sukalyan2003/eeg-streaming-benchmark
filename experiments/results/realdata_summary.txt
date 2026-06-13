@@ -1,0 +1,10 @@
+CHB-MIT chb01_01.edf — fs=256 Hz, channels=['FP1-F7', 'F3-C3', 'C3-P3', 'P3-O1'], segment 600-720s.
+filtfilt floor = 606 samples (2.37 s at 256 Hz).
+
+R1 (overlap-add vs naive, 8 s windows, real EEG):
+  boundary RMSE  naive=12.959 uV  overlap(0.5s)=0.049 uV  -> 48.5 dB reduction.
+  interior RMSE  naive=0.001 uV  overlap=0.000 uV (both ~0 => zero-phase interior).
+
+R3 (fallback group-delay shift, 1 s window, real EEG):
+  measured lag of fallback vs zero-phase = +391 ms (theoretical (taps-1)/2/fs = 393 ms).
+  Note: the shift is fs-dependent; at 256 Hz it is ~393 ms vs ~500 ms at 200 Hz.

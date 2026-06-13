@@ -92,6 +92,19 @@ overlap for small chunks, or pad-to-floor-then-trim), and make the fallback obse
 - **Fix:** remove the manual Hann (let `welch` taper per segment), or pass `window='boxcar'`
   to `welch`. Until then, relative bandpower (a stored clinical feature) is biased.
 
+## Result 6 — Real-data confirmation on CHB-MIT (`exp_realdata.py`)
+External validity on one open-access clinical recording (PhysioNet CHB-MIT `chb01_01.edf`,
+256 Hz, bipolar montage; raw EDF gitignored under `data/`):
+- **R1 confirmed:** overlap-add reduces window-seam boundary RMSE from **12.96 µV → 0.049 µV
+  (48.5 dB)** on real EEG (interior RMSE ≈ 0 → zero-phase interior). The effect is *larger* than
+  on synthetic data.
+- **R2 confirmed:** the `filtfilt` floor is `3 × len(taps) = 606 samples`, i.e. **2.37 s at
+  256 Hz** (vs 3.03 s at 200 Hz) — the floor is in samples, so its duration scales with `fs`.
+- **R3 confirmed:** the fallback group-delay shift measured by cross-correlation against the
+  zero-phase output is **+391 ms**, matching the theoretical `(taps−1)/2/fs = 393 ms`. The shift
+  is **fs-dependent** (~393 ms at 256 Hz vs ~500 ms at 200 Hz) — an honest nuance for the paper.
+- Figure: `results/fig_realdata_seam.png`.
+
 ## Reproduce
 ```bash
 cd Research/Option-2-Non-AI-Based/experiments
@@ -99,4 +112,7 @@ python3 run_boundary_experiment.py   # Results 1–2 (overlap-add + filtfilt flo
 python3 exp_filter_fidelity.py       # Result 3 (magnitude + event timing)
 python3 exp_channels_features.py     # Result 4 (canonicalization + feature integrity)
 python3 exp_bandpower_equiv.py       # Result 5 (bandpower equivalence vs MNE; double-Hann)
+# Result 6 (real data) needs one open EDF (gitignored):
+curl -o data/chb01_01.edf https://physionet.org/files/chbmit/1.0.0/chb01/chb01_01.edf
+python3 exp_realdata.py              # Result 6 (CHB-MIT confirmation of R1–R3)
 ```
