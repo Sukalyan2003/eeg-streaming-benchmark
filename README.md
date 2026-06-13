@@ -1,146 +1,115 @@
 # Option 2 (Non-AI / Classical-DSP) — Paper Plan
 
-**Working title:** *Artifact-Free Real-Time EEG Re-Montaging and Quantitative Feature Extraction
-over a Windowed Datastore*
+**Working title:** *Correctness Criteria for Windowed Real-Time EEG Signal Processing: Phase,
+Windowing, and Spectral Estimation*
 
-**SPMB track:** Paper (original, ~4–6 pages, oral presentation).
+**SPMB track:** Paper (original, ~4–6 pages, oral presentation; downgrade to poster allowed).
 
-This plan collapses four classical signal-processing and systems capabilities into one
-narrative, with no machine learning: channel canonicalization (`domain/helpers/channels.py`),
-real-time overlap-add montage filtering (`domain/helpers/filters.py` plus
-`file-service/src/services/streaming/helpers.py`), quantitative derived features
-(bandpower and aEEG in `workers/`), and a memory-bounded streaming server
-(`file-service/src/core/garbage_collector.py`).
+This is a classical signal-processing study, with no machine learning. Browser- and cloud-based
+EEG review applies standard DSP — bandpass/notch filtering and quantitative-EEG (QEEG) feature
+extraction — to short windows on demand rather than to whole recordings. We characterize where
+windowing silently breaks correctness and derive deterministic criteria that prevent it, using a
+standard-library reference implementation (NumPy/SciPy/MNE) evaluated against synthetic ground
+truth and multiple open clinical recordings.
+
+The deliverables are `paper.tex` (+ `references.bib`), the experiment scripts and figures under
+`experiments/`, and the poster materials under `Poster/`.
 
 ---
 
 ## 1. Problem and motivation
 
-Browser-based EEG review streams short signal windows on demand. Naïve per-window filtering
-introduces boundary/edge artifacts; inconsistent channel naming corrupts montage computation
-and every downstream quantitative feature; and serving many concurrent viewers can exhaust
-memory. We present a deterministic pipeline that guarantees inter-window continuity (overlap-add),
-correct re-referencing, and reproducible bandpower/aEEG, while bounding memory under concurrent
-load — a signal-processing and systems contribution that needs no training data.
+A whole-signal operation can become wrong once it is applied window-by-window: a zero-phase
+filter may not be zero-phase on a short window, and a spectral estimator may be biased if the
+window is tapered upstream. These failures are silent — the output still looks like a valid
+signal or spectrum. We quantify three such failures and give one-line invariants that fix them.
 
-## 2. Research questions and hypotheses
+## 2. Research questions
 
 - **RQ1 (continuity).** Does overlap-add windowed filtering eliminate boundary artifacts versus
-  naïve per-window filtering, at equal end-to-end latency? (Motivated by the corrections recorded
-  in `file-service/changelogs/OVERLAP_ADD_FIX_APPLIED.md` and the polarity/validation notes.)
-- **RQ2 (correctness).** Does channel canonicalization (`normalize_channel_name`,
-  `build_channel_map`) produce montage and feature outputs that match a reference implementation
-  (e.g., MNE) on recordings whose raw channel names diverge?
-- **RQ3 (scale).** What is the latency/throughput/peak-memory envelope of the connection-aware
-  garbage collector under N concurrent WebSocket sessions?
+  naive per-window filtering, at equal latency?
+- **RQ2 (phase/timing).** When is windowed zero-phase filtering actually zero-phase, and what is
+  the event-timing cost of leaving that regime?
+- **RQ3 (spectral estimation).** Does tapering a window before a Welch/multitaper estimator that
+  already tapers bias relative band power, and by how much?
 
 ## 3. Background and related work
 
 Position against standard EEG filtering (FIR vs. IIR, zero-phase vs. causal), block-convolution
-methods (overlap-add / overlap-save), montage/re-referencing conventions, and quantitative EEG
-features (relative band power, amplitude-integrated EEG). The contribution is doing all of this
-**correctly in a streaming, multi-tenant setting** and quantifying it.
+methods (overlap-add / overlap-save), and quantitative-EEG spectral features (relative band power
+via Welch / multitaper). The contribution is characterizing these **in a windowed, real-time
+setting** and turning the findings into deterministic design criteria.
 
 ## 4. Methods
 
-**Channels.** `domain/helpers/channels.py` — `ChannelFamily`, `filter_channels_for_montage`,
-and deterministic display ordering (`get_ordered_channel_sequence`, `order_plot_channels`).
+**Reference DSP (`experiments/dsp.py`).** FIR bandpass (order 200, 202 taps, Hamming `firwin`,
+0.5–30 Hz) applied with zero-phase `filtfilt`; IIR notch (`iirnotch`); the documented `filtfilt`
+length requirement (`3 × len(taps)`) with an explicit causal `lfilter` fallback for short
+windows. NumPy/SciPy only — no external package.
 
-**Filtering.** FIR bandpass (order ~200) and IIR notch at 50/60 Hz
-(`_get_bandpass_coefficients` at `domain/helpers/filters.py:37`, `_get_notch_coefficients` at
-`:60`), applied globally and per channel; overlap-add continuity in the streaming hot path
-(`file-service/src/services/streaming/helpers.py`, `_query_window_direct_fast` at `:320`).
+**Windowing (`experiments/windowing.py`).** Whole-signal (zero-phase reference), naive
+per-window, and overlap-add (filter an extended window, keep the center).
 
-**Montage.** Bipolar, average, ear, Cz, Laplacian, and custom references
-(`domain/helpers/montage.py`).
+**Synthetic ground truth (`experiments/synth.py`).** Seeded multichannel EEG with known band
+content, 1/f background, and a mains component, so any windowed discontinuity is attributable to
+the windowing strategy.
 
-**Derived features.** Per-second δ/θ/α/β/γ bandpower and amplitude-integrated EEG
-(`workers/src/utils/extraction/band_power_optimized.py`,
-`workers/src/utils/extraction/aeeg_processor.py`).
-
-**Systems.** Metadata cache, active-connection tracking, and RAM-pressure-triggered clearing
-(`file-service/src/core/garbage_collector.py`: `get_memory_usage_mb` at `:58`,
-`connection_opened`/`connection_closed` at `:128`/`:144`).
+**Spectral estimation.** `scipy.signal.welch` / MNE `psd_array_welch` / `psd_array_multitaper`
+for the cascaded-tapering comparison.
 
 ## 5. Data
 
-Public EDF corpora used purely as signals (e.g., TUH normal/abnormal, CHB-MIT), plus
-**synthetic signals with known spectra** to provide ground truth for filter-fidelity and
-overlap-add boundary measurements.
+- **Synthetic** signals with known spectra (ground truth for filter fidelity and overlap-add).
+- **PhysioNet CHB-MIT** scalp EEG (256 Hz) for multi-subject external validity of the filtering
+  results; EDFs are fetched at run time and gitignored.
 
-## 6. Experimental design
+## 6. Experimental design → results (already obtained — see `experiments/FINDINGS.md`)
 
-1. **Continuity (RQ1):** measure boundary-artifact energy at window edges for overlap-add vs.
-   naïve windowing, across multiple window sizes and filter settings, holding latency constant.
-2. **Correctness (RQ2):** compare montage and bandpower/aEEG outputs against a reference (MNE)
-   on recordings with harmonized vs. raw channel names.
-3. **Scale (RQ3):** load-test the streaming server, sweeping the concurrent-session count with
-   GC on and off; record latency, throughput, and peak memory.
+1. **R1 — Overlap-add eliminates seam artifacts.** 8 s windows: boundary RMSE 14.93 µV → 0.275 µV
+   (**34.7 dB**) at ~4% latency.
+2. **R2 — Zero-phase length floor + design criterion.** `filtfilt` needs `3 × taps = 606` samples
+   (3.03 s @ 200 Hz); below it the causal path distorts the whole window (interior RMSE 30.7 µV).
+   Keep **`(chunk + 2·overlap)·fs ≥ 3·taps`**.
+3. **R3 — Magnitude fidelity + event mis-timing.** Zero-phase: 0 ms shift; causal fallback:
+   **+500 ms** = `(taps−1)/2/fs`. Passband −0.64 dB; notch/stopband below the −120 dB floor.
+4. **R4 — Generalization across FIR order + robustness.** Floor `3(order+1)`, shift
+   `(taps−1)/2/fs`; overlap-add reduction **35.1 ± 2.3 dB** over 12 seeds.
+5. **R5 — Cascaded-tapering pitfall.** Double tapering biases relative band power up to **11.9 pp**
+   (Welch) / **9.1 pp** (multitaper); tapering once matches the reference (0.64 / 0.0 pp). Taper
+   once.
+6. **R6 — Multi-subject CHB-MIT confirmation.** R1 and R3 reproduced across multiple subjects
+   (mean ± SD); fallback shift matches `(taps−1)/2/fs` (~393 ms at 256 Hz).
 
 ## 7. Evaluation metrics
 
-- Edge-artifact energy reduction (dB) and visible discontinuity at window boundaries.
-- Spectral error versus synthetic ground truth (magnitude/phase fidelity).
-- Feature agreement versus reference (intraclass correlation, Bland–Altman).
-- End-to-end window latency (p50/p95), sustained throughput, and peak memory vs. session count.
+Boundary/interior RMSE vs. whole-signal ground truth (dB reduction); transient peak-time shift
+(ms) vs. theoretical group delay; magnitude response vs. designed `|H|²`; per-band relative-power
+discrepancy (pp) and Pearson r vs. a reference estimator.
 
 ## 8. Expected contributions
 
-1. A reproducible real-time montage/filter method with **quantified** boundary-artifact
-   elimination at no latency cost.
-2. Evidence that channel canonicalization is necessary for correct quantitative features.
-3. A characterized, memory-bounded multi-tenant streaming design.
-4. An open reference implementation and measurement harness.
+1. A reproducible, standard-library methodology that turns a windowed DSP chain into a
+   correctness benchmark.
+2. The zero-phase length-floor result and a deterministic design criterion, generalized across
+   FIR order and confirmed on multiple real subjects.
+3. Quantified overlap-add seam-artifact elimination at negligible latency.
+4. A cascaded-tapering spectral-estimation result with a one-line remedy.
 
-## 8b. Preliminary results (already obtained — see `experiments/`)
+## 9. Reproducibility
 
-Driving the real `domain` production filters on synthetic ground truth
-(`experiments/FINDINGS.md`):
-
-1. **Overlap-add eliminates seam artifacts:** in the zero-phase regime (8 s windows), boundary
-   error drops 14.93 µV → 0.275 µV (**≈35 dB**) at **negligible latency cost** (sub-millisecond
-   per window; overhead within measurement noise).
-2. **A `filtfilt` length floor governs the whole thing:** the FIR order-200 bandpass uses
-   zero-phase `filtfilt` only at ≥ 606 samples (3.03 s); below that it silently falls back to
-   causal `lfilter`. The streaming default chunk (10 s + 0.5 s overlap = 11 s) is safely above
-   the floor, but `chunk_size` is configurable down to 0.5 s, and small chunks silently cross
-   into the fallback regime.
-3. **Event mis-timing in the fallback regime:** the fallback path imposes a **+500 ms**
-   uncompensated group-delay shift (zero-phase path: 0 ms); magnitude response is otherwise
-   faithful (passband −0.64 dB, notch −120 dB).
-4. **Channel canonicalization matters for features:** 89.5% family-classification accuracy on
-   real-world name variants (with a `POL`-prefix gap), and omitting channel-aware exclusion of a
-   mislabeled ECG channel inflates average-reference alpha bandpower by **+48.7%**.
-
-These elevate the paper from "overlap-add fixes seams" to a characterization of the
-order/floor/window/overlap interaction with a concrete clinical-impact metric (event timing).
-
-## 9. Timeline (≈12 weeks)
-
-| Weeks | Milestone |
-|---|---|
-| 1–2 | Measurement harness + synthetic ground-truth signals |
-| 3–5 | Overlap-add boundary study (RQ1) |
-| 6–7 | Filter magnitude/phase fidelity |
-| 8–9 | Montage/feature equivalence vs. reference (RQ2) |
-| 10–11 | Load + memory characterization (RQ3) |
-| 12 | Writing, figures, internal review |
+Release the DSP reference implementation, synthetic-signal generators, metrics, and figure
+scripts. Raw clinical EDFs are downloaded from PhysioNet at run time; no PHI is required.
 
 ## 10. Risks and mitigations
 
 - **Reference-convention mismatch** (filter design, band edges) → fix shared coefficients and
   document band definitions before comparison.
-- **Load-test variability** → fixed hardware, repeated trials, reported confidence intervals.
-- **Feature-definition differences vs. MNE** → align and document band edges and windowing.
+- **Single-recording external validity** → confirm on multiple CHB-MIT subjects, report mean ± SD.
+- **Estimator-definition differences vs. MNE** → align band edges and windowing; report Pearson r.
 
-## 11. Reproducibility
+## 11. Why this fits SPMB as a Paper
 
-Release the DSP reference implementation, synthetic-signal generators, the load-test harness,
-and all configurations. No datasets with PHI are required.
-
-## 12. Why this fits SPMB as a Paper
-
-A complete signal-processing-plus-systems study with measurable results (artifact energy,
-spectral fidelity, feature agreement, and a latency/memory envelope) and a strong
-reproducibility story — appropriate for a 4–6 page paper and an oral. The companion **Poster**
-(see `Poster/README.md`) isolates the single sharpest result.
+A self-contained signal-processing study with deterministic, reproducible results (artifact
+energy, event timing, spectral bias) and a strong reproducibility story — appropriate for a 4–6
+page paper and an oral. The companion **Poster** (see `Poster/README.md`) isolates the single
+sharpest result (overlap-add + the zero-phase length floor).

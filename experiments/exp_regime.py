@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 
 from synth import generate
 from windowing import filter_whole, filter_naive, filter_overlap, seam_indices
-from domain.helpers.filters import _get_bandpass_coefficients, create_bandpass_filter
+from dsp import bandpass_coefficients, apply_bandpass
 
 RESULTS = Path(__file__).parent / "results"
 RESULTS.mkdir(exist_ok=True)
@@ -37,12 +37,12 @@ def rms(a): return float(np.sqrt(np.mean(np.square(a))))
 
 def event_shift_ms(order, fs=FS):
     """Group-delay shift of the fallback path for a given order (a short window forces lfilter)."""
-    (taps,) = _get_bandpass_coefficients(float(fs), BP[0], BP[1], order)
+    (taps,) = bandpass_coefficients(float(fs), BP[0], BP[1], order)
     n = int(20 * fs); t = np.arange(n) / fs; t0 = 10.0
     x = 5 * np.sin(2 * np.pi * 10 * t) + 40 * np.exp(-0.5 * ((t - t0) / 0.02) ** 2)
     half = (3 * len(taps)) // 2 - 5          # just below the floor -> fallback
     c = int(t0 * fs)
-    yfb = create_bandpass_filter(x[c - half:c + half], fs, BP[0], BP[1], order=order)
+    yfb = apply_bandpass(x[c - half:c + half], fs, BP[0], BP[1], order=order)
     pk = (c - half + int(np.argmax(np.abs(yfb)))) / fs
     return (pk - t0) * 1e3, len(taps)
 
@@ -50,7 +50,7 @@ def event_shift_ms(order, fs=FS):
 def order_sweep():
     rows = []
     for order in ORDERS:
-        (taps,) = _get_bandpass_coefficients(float(FS), BP[0], BP[1], order)
+        (taps,) = bandpass_coefficients(float(FS), BP[0], BP[1], order)
         floor = 3 * len(taps)
         shift, ntaps = event_shift_ms(order)
         rows.append(dict(order=order, n_taps=ntaps, floor_samples=floor,
@@ -69,7 +69,7 @@ def transition(order=200, seed=0):
     """Sweep extended length L=chunk+2*overlap through the floor; measure boundary error."""
     fs, sig = generate(120.0, FS, 1, mains_hz=NOTCH, seed=seed)
     x = sig[0]; n = x.size
-    (taps,) = _get_bandpass_coefficients(float(FS), BP[0], BP[1], order)
+    (taps,) = bandpass_coefficients(float(FS), BP[0], BP[1], order)
     floor_s = 3 * len(taps) / FS
     gt = filter_whole(x, fs, BP, NOTCH, order=order)
     win_s = 1.0

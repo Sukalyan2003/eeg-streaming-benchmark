@@ -1,10 +1,10 @@
 """
-Boundary-artifact experiment (Option 2 headline result).
+Boundary-artifact experiment (headline result).
 
-Compares three streaming-filter strategies against a whole-signal ground truth, using the
-real `domain` production filters:
-  - naive per-window filtering (pre-fix)
-  - overlap-add / extended-window filtering (production fix; _FILTER_OVERLAP_S=0.5 default)
+Compares three windowed-filtering strategies against a whole-signal ground truth, using the
+reference DSP primitives in `dsp.py` (NumPy/SciPy only):
+  - naive per-window filtering (each fetched window filtered independently)
+  - overlap-add / extended-window filtering (filter window +/- context, keep the center)
 
 Outputs (under experiments/results/):
   - metrics.csv      : per (window_s, overlap_s) reconstruction + boundary error + latency
@@ -39,10 +39,10 @@ OVERLAPS = [0.25, 0.5, 1.0, 2.0]   # production default = 0.5
 SEAM_HALF = int(round(0.05 * FS))  # ±50 ms "seam" region
 GUARD = int(round(0.6 * FS))       # interior excludes ±0.6 s around seams
 
-# Production bandpass is FIR order 200 (201 taps); scipy filtfilt requires >= 3*taps
-# samples or create_bandpass_filter falls back to a phase-distorting lfilter path.
+# FIR order 200 -> 202 taps; scipy filtfilt requires > 3*taps samples, otherwise a streaming
+# filter must fall back to a phase-distorting causal lfilter path for that window.
 ORDER = 200
-FILTFILT_MIN = 3 * (ORDER + 1)     # 603 samples = 3.015 s @ 200 Hz
+FILTFILT_MIN = 3 * (ORDER + 2)     # 606 samples = 3.03 s @ 200 Hz (202 taps)
 
 
 def rms(a):
@@ -117,8 +117,8 @@ def main():
     nrow = get(8.0, 0.0, "naive")
     orow = get(8.0, 0.5, "overlap")
     db = 20 * np.log10(nrow["boundary_rmse"] / (orow["boundary_rmse"] + 1e-12))
-    # Smallest CONFIGURABLE chunk vs the production default chunk.
-    small = get(1.0, 0.5, "overlap")     # chunk_size floor is 0.5 s; 1 s is a valid small request
+    # A small window (1 s chunk + 0.5 s overlap) falls below the zero-phase length floor.
+    small = get(1.0, 0.5, "overlap")
     lines = [
         "RESULT 1 (zero-phase regime, win=8 s):",
         f"  boundary RMSE naive={nrow['boundary_rmse']:.3f} uV -> overlap(0.5 s)="
@@ -126,18 +126,18 @@ def main():
         f"+{100*(orow['ms_per_window']/nrow['ms_per_window']-1):.0f}% latency "
         f"({nrow['ms_per_window']:.3f} -> {orow['ms_per_window']:.3f} ms/window).",
         "",
-        "RESULT 2 (filtfilt length floor):",
-        f"  create_bandpass_filter (FIR order {ORDER}) needs >= {FILTFILT_MIN} samples "
-        f"({FILTFILT_MIN/FS:.2f} s) or it silently falls back from zero-phase filtfilt to lfilter.",
-        f"  Streaming filters a window of db_chunk_size + 2*overlap. The DEFAULT chunk is 10 s "
-        f"(=> 11 s, filtfilt OK). But chunk_size is clamped only to [0.5, 60] s, so a small "
-        f"client chunk silently enters the fallback regime:",
+        "RESULT 2 (zero-phase length floor):",
+        f"  An order-{ORDER} FIR (202 taps) needs > {FILTFILT_MIN} samples "
+        f"({FILTFILT_MIN/FS:.2f} s) for zero-phase filtfilt; a shorter window must use a causal "
+        f"filter instead.",
+        f"  A windowed filter processes a span of chunk + 2*overlap. Large windows clear the "
+        f"floor and are zero-phase; small windows do not:",
         f"    e.g. chunk=1 s + overlap=0.5 s = {small['ext_samples']} samples (<{FILTFILT_MIN}) "
         f"=> filtfilt_active={small['filtfilt_active']}, interior RMSE="
         f"{small['interior_rmse']:.2f} uV (distorted everywhere, not just seams).",
-        f"  Minimum overlap to stay zero-phase at a 1 s chunk: "
-        f">= {(FILTFILT_MIN/FS - 1.0)/2:.2f} s each side; or keep chunk + 2*overlap >= "
-        f"{FILTFILT_MIN/FS:.2f} s.",
+        f"  Design criterion to stay zero-phase: keep chunk + 2*overlap >= "
+        f"{FILTFILT_MIN/FS:.2f} s (>= {(FILTFILT_MIN/FS - 1.0)/2:.2f} s overlap each side at a "
+        f"1 s chunk), i.e. (chunk + 2*overlap)*fs >= 3*taps.",
     ]
     (RESULTS / "headline.txt").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))

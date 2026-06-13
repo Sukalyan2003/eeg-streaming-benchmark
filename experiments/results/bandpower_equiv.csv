@@ -1,6 +1,6 @@
-band,prod_rel_pct,mne_rel_pct,max_abs_disc_pp
-delta,22.863,22.738,9.7068
-theta,9.898,9.254,3.0518
-alpha,60.763,62.0,11.9187
-beta,5.46,5.038,0.9995
-gamma,1.017,0.971,0.1654
+band,double_taper_pct,single_taper_pct,mne_pct,double_vs_mne_pp,single_vs_mne_pp
+delta,22.938,22.636,22.809,9.7788,0.6442
+theta,9.932,9.419,9.284,3.0666,0.4254
+alpha,60.953,62.104,62.196,11.9039,0.3042
+beta,5.48,5.185,5.055,1.0059,0.2539
+gamma,0.698,0.656,0.656,0.1557,0.0257

@@ -21,7 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from windowing import filter_whole, filter_naive, filter_overlap, seam_indices
-from domain.helpers.filters import create_bandpass_filter, _get_bandpass_coefficients
+from dsp import apply_bandpass, bandpass_coefficients
 
 RESULTS = Path(__file__).parent / "results"
 DATA = Path(__file__).parent / "data" / "chb01_01.edf"
@@ -55,7 +55,7 @@ def seam_interior_rms(err, seams, n, fs):
 def main():
     fs, chans, sig = load()
     n = sig.shape[1]
-    (taps,) = _get_bandpass_coefficients(float(fs), BP[0], BP[1], 200)
+    (taps,) = bandpass_coefficients(float(fs), BP[0], BP[1], 200)
     floor = 3 * len(taps)
 
     # R1: overlap-add vs naive at an 8 s window (zero-phase regime)
@@ -75,7 +75,7 @@ def main():
     short = int(1.0 * fs)                         # 1 s window -> < floor at 256 Hz too
     mid = n // 2
     win = sig[c][mid - short // 2: mid + short // 2]
-    y_fb = create_bandpass_filter(win, fs, BP[0], BP[1])     # fallback (short)
+    y_fb = apply_bandpass(win, fs, BP[0], BP[1])     # fallback (short)
     y_zero = gt[c][mid - short // 2: mid + short // 2]        # zero-phase reference (cropped)
     yfb = y_fb - y_fb.mean(); yz = y_zero - y_zero.mean()
     xcorr = np.correlate(yfb, yz, mode="full")

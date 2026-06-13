@@ -1,46 +1,52 @@
 # Option 2 (Non-AI / Classical-DSP) — Poster Plan
 
-**Working title:** *Overlap-Add Windowed Filtering Eliminates Boundary Artifacts in Streaming
-EEG Re-Montaging*
+**Working title:** *Keeping Windowed EEG Filtering Zero-Phase and Artifact-Free: Overlap-Add and
+the Zero-Phase Length Floor*
 
 **SPMB track:** Poster (short abstract, poster presentation, plus a summary video for the
 conference website).
 
-This poster isolates the single sharpest result of the Option 2 paper (see `../README.md`): the
-effect of overlap-add on streaming filter continuity. It drops the feature-equivalence and
-load/memory arms.
+This poster isolates the sharpest result of the Option 2 paper (see `../README.md`): the
+time-domain filtering correctness story — overlap-add removes window-seam artifacts, and a
+zero-phase length floor governs whether windowed filtering is zero-phase at all. It drops the
+spectral-estimation arm (`R5`) of the paper.
 
 ---
 
 ## 1. Focused question
 
-When EEG is filtered window-by-window for on-demand streaming, does **overlap-add** remove the
-boundary/edge artifacts that naïve per-window filtering introduces — without adding latency?
+When EEG is filtered window-by-window for on-demand streaming, (a) does **overlap-add** remove the
+boundary artifacts that naive per-window filtering introduces without adding latency, and (b) when
+is the zero-phase filter actually zero-phase?
 
 ## 2. Method
 
-- Identical FIR bandpass + IIR notch filters from `domain/helpers/filters.py`
-  (`_get_bandpass_coefficients`, `_get_notch_coefficients`), applied two ways: naïve per-window
-  versus overlap-add (the approach in `file-service/src/services/streaming/helpers.py`, with the
-  fix recorded in `file-service/changelogs/OVERLAP_ADD_FIX_APPLIED.md`).
-- Test on public EDF recordings plus synthetic signals with known spectra for ground truth.
-- Sweep window sizes and filter cutoffs; hold end-to-end latency constant.
+- A standard FIR bandpass (order 200) + IIR notch (`experiments/dsp.py`, SciPy only), applied two
+  ways: naive per-window versus overlap-add (filter an extended window, keep the center).
+- Synthetic signals with known spectra for ground truth, plus multiple PhysioNet CHB-MIT subjects
+  for external validity.
+- Sweep window sizes; characterize the `filtfilt` length floor (`3 × taps`) and the causal-fallback
+  group-delay shift across FIR orders.
 
 ## 3. Metrics
 
-- Edge-band energy at window boundaries (dB reduction, overlap-add vs. naïve).
-- Latency parity (to show the improvement is free).
-- A clear before/after waveform and spectrogram figure across a window boundary.
+- Boundary RMSE at window seams (dB reduction, overlap-add vs. naive).
+- Per-window latency parity (to show the improvement is free).
+- Event-timing shift (ms) of a transient on the zero-phase vs. causal-fallback path.
 
-## 4. Expected result
+## 4. Result (obtained)
 
-Quantified elimination of boundary artifacts with no latency penalty — a crisp, visual,
-practically relevant DSP finding.
+- Overlap-add reduces seam boundary RMSE by **~35 dB** (synthetic) and **more on real CHB-MIT
+  EEG**, at negligible latency.
+- The zero-phase floor is `3 × taps = 606` samples; below it the causal path mis-times events by
+  up to **~500 ms** (`(taps−1)/2/fs`). The design rule **`chunk + 2·overlap ≥ 3·taps`** keeps
+  windowed filtering zero-phase and artifact-free.
 
 ## 5. Deliverables
 
-- One-page abstract.
-- Poster centered on the before/after boundary figure plus a compact methods panel.
+- One-page abstract (`ABSTRACT.md`).
+- Poster centered on the before/after seam figure (synthetic + real EEG) plus a compact
+  floor/timing panel.
 - A ~3-minute summary video.
 
 ## 6. Timeline (≈4 weeks)
@@ -48,11 +54,11 @@ practically relevant DSP finding.
 | Week | Milestone |
 |---|---|
 | 1 | Measurement harness + synthetic ground-truth signals |
-| 2–3 | Overlap-add vs. naïve sweep across window sizes/filters |
+| 2–3 | Overlap-add vs. naive sweep; floor/timing characterization; multi-subject CHB-MIT |
 | 4 | Figures, abstract, summary video |
 
 ## 7. Why this fits SPMB as a Poster
 
 A focused, visual, self-contained signal-processing result that communicates instantly in a
-poster and a short video. Expanded with the feature-equivalence and load/memory studies, it
+poster and a short video. Expanded with the cascaded-tapering spectral-estimation result, it
 becomes the Option 2 paper.

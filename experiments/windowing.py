@@ -1,35 +1,33 @@
 """
-Windowing strategies for streaming EEG filtering, all driving the *real* production
-filter primitives from the shared `domain` package
-(`domain.helpers.filters.create_bandpass_filter` / `create_notch_filter`).
+Windowing strategies for streaming EEG filtering, all driving the same reference DSP
+primitives (`dsp.apply_bandpass` / `dsp.apply_notch`, NumPy/SciPy only).
 
 Three strategies on a 1-D signal:
   - filter_whole   : filter the entire signal once (ground truth / ideal reference).
   - filter_naive   : filter each non-overlapping display window independently, concatenate.
-                     This is the pre-fix behavior described in
-                     file-service/changelogs/OVERLAP_ADD_FIX_APPLIED.md.
+                     This is the behaviour of a viewer that filters each fetched window on
+                     its own.
   - filter_overlap : for each display window, filter an *extended* window that includes
                      `overlap_s` seconds of real neighboring samples on each side, then
-                     keep only the center display window. This is the production fix
-                     (streaming/helpers.py, _FILTER_OVERLAP_S default 0.5 s).
+                     keep only the center display window (overlap-add).
 
-`create_bandpass_filter` uses scipy `filtfilt` (zero-phase). filtfilt pads each call with
-an artificial odd reflection; at independent window seams that reflection does not match
-the true signal continuation, which is the source of the boundary artifact. Supplying real
-context samples (overlap) pushes the artificial reflection outside the kept region.
+The bandpass uses zero-phase `filtfilt`, which pads each call with an artificial odd
+reflection; at independent window seams that reflection does not match the true signal
+continuation, which is the source of the boundary artifact. Supplying real context samples
+(overlap) pushes the artificial reflection outside the kept region.
 """
 from __future__ import annotations
 import numpy as np
-from domain.helpers.filters import create_bandpass_filter, create_notch_filter
+from dsp import apply_bandpass, apply_notch
 
 
 def _apply(x: np.ndarray, fs: int, bp: tuple[float, float] | None,
            notch_hz: float | None, order: int = 200) -> np.ndarray:
     y = x
     if bp is not None:
-        y = create_bandpass_filter(y, fs, bp[0], bp[1], order=order)
+        y = apply_bandpass(y, fs, bp[0], bp[1], order=order)
     if notch_hz is not None:
-        y = create_notch_filter(y, fs, notch_hz)
+        y = apply_notch(y, fs, notch_hz)
     return y
 
 

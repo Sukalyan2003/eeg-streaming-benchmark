@@ -1,8 +1,15 @@
-Part 1 — channel canonicalization: family accuracy 89.5% on 19 real-world name variants (non-EEG channels correctly identified for montage exclusion).
+Montage hygiene (synthetic) — leakage of a wrongly-included ECG channel into an
+average-referenced EEG channel, by number of EEG reference channels N (the ECG
+enters the average with weight 1/(N+1)):
 
-Part 2 — feature integrity (average-reference alpha bandpower of C3):
-  channel-aware average (4 EEG chans, ECG excluded): 39.45
-  naive average (ECG included):                            58.68
-  => error from not excluding the ECG channel: +48.7%.
+  N= 3 (ECG weight 0.250): |corr(target, ECG)| excluded=0.005  included=0.500 +/- 0.102
+  N= 7 (ECG weight 0.125): |corr(target, ECG)| excluded=0.005  included=0.239 +/- 0.036
+  N=15 (ECG weight 0.062): |corr(target, ECG)| excluded=0.005  included=0.117 +/- 0.014
+  N=31 (ECG weight 0.031): |corr(target, ECG)| excluded=0.005  included=0.067 +/- 0.008
+  N=63 (ECG weight 0.016): |corr(target, ECG)| excluded=0.005  included=0.035 +/- 0.007
 
-Takeaway: correct quantitative features require channel canonicalization/classification before montage; mixing a mislabeled non-EEG channel into the reference measurably corrupts band power.
+Excluding the ECG leaves negligible correlation (~0.005) at every montage size;
+including it injects a copy scaled by 1/(N+1) -> leakage correlation ~2/(N+1)
+(0.50 at N=3 down to 0.07 at N=31). Contamination is severe for sparse montages
+and falls with channel count, but the design rule is the same: exclude non-EEG
+channels from the reference before averaging.

@@ -1,0 +1,18 @@
+Multi-subject CHB-MIT confirmation (n=10 subjects, first recording, 8 s windows):
+
+  R1 overlap-add boundary-RMSE reduction = 50.6 +/- 2.2 dB
+     naive boundary RMSE   = 22.00 +/- 9.15 uV
+     overlap boundary RMSE = 0.0650 +/- 0.0277 uV
+  R3 fallback group-delay shift = 389 +/- 7 ms (theory 393 ms; |measured-theory| = 4.0 +/- 6.5 ms)
+
+Per-subject:
+  chb01: fs=256 Hz, dB=48.47, shift=390.6 ms (theory 392.6)
+  chb02: fs=256 Hz, dB=48.67, shift=390.6 ms (theory 392.6)
+  chb03: fs=256 Hz, dB=52.55, shift=369.1 ms (theory 392.6)
+  chb04: fs=256 Hz, dB=55.04, shift=392.6 ms (theory 392.6)
+  chb05: fs=256 Hz, dB=51.09, shift=390.6 ms (theory 392.6)
+  chb06: fs=256 Hz, dB=47.37, shift=390.6 ms (theory 392.6)
+  chb07: fs=256 Hz, dB=51.24, shift=390.6 ms (theory 392.6)
+  chb09: fs=256 Hz, dB=48.7, shift=390.6 ms (theory 392.6)
+  chb10: fs=256 Hz, dB=52.27, shift=390.6 ms (theory 392.6)
+  chb11: fs=256 Hz, dB=50.11, shift=390.6 ms (theory 392.6)

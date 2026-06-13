@@ -1,15 +1,16 @@
 """
-Filter fidelity and phase/temporal-distortion experiment (Option 2, RQ2 part 1).
+Filter fidelity and phase/temporal-distortion experiment.
 
-Two questions about the production bandpass (`domain.helpers.filters.create_bandpass_filter`,
-FIR order 200) and notch (`create_notch_filter`, 50 Hz):
+Two questions about the reference bandpass (`dsp.apply_bandpass`, FIR order 200) and notch
+(`dsp.apply_notch`, 50 Hz):
 
   A. Magnitude fidelity — does the zero-phase (filtfilt) path realize the intended
      passband/stopband, and does the notch reject 50 Hz?
   B. Phase / temporal distortion — the filtfilt path is zero-phase (no time shift). When the
-     window is shorter than 3x(taps) the function falls back to causal `lfilter`, whose linear-
-     phase FIR group delay (~(taps-1)/2 samples) is NOT compensated, shifting events in time.
-     We measure the temporal shift of a sharp transient (a proxy for an epileptiform spike).
+     window is shorter than 3x(taps), filtfilt cannot run and a streaming filter must use a
+     causal `lfilter`, whose linear-phase FIR group delay (~(taps-1)/2 samples) is NOT
+     compensated, shifting events in time. We measure the temporal shift of a sharp transient
+     (a proxy for an epileptiform spike).
 
 Outputs under results/:
   fidelity_metrics.csv, fig_magnitude.png, fig_transient_shift.png
@@ -23,15 +24,14 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from domain.helpers.filters import (create_bandpass_filter, create_notch_filter,
-                                     _get_bandpass_coefficients)
+from dsp import apply_bandpass, apply_notch, bandpass_coefficients
 
 RESULTS = Path(__file__).parent / "results"
 RESULTS.mkdir(exist_ok=True)
 FS = 200
 BP = (0.5, 30.0)
 NOTCH = 50.0
-(TAPS,) = _get_bandpass_coefficients(float(FS), BP[0], BP[1], 200)
+(TAPS,) = bandpass_coefficients(float(FS), BP[0], BP[1], 200)
 FILTFILT_MIN = 3 * len(TAPS)
 
 
@@ -44,8 +44,8 @@ def measure_magnitude():
     gains = []
     for f in freqs:
         x = np.sin(2 * np.pi * f * t)
-        y = create_bandpass_filter(x, FS, BP[0], BP[1])
-        y = create_notch_filter(y, FS, NOTCH)
+        y = apply_bandpass(x, FS, BP[0], BP[1])
+        y = apply_notch(y, FS, NOTCH)
         # steady-state gain measured away from the edges
         s = slice(int(5 * FS), int(55 * FS))
         gains.append(np.sqrt(np.mean(y[s] ** 2)) / np.sqrt(np.mean(x[s] ** 2)))
@@ -68,13 +68,13 @@ def measure_transient_shift():
     x = bg + 40.0 * spike
 
     # Zero-phase path: filter the whole (long) signal -> filtfilt
-    y_zero = create_bandpass_filter(x, FS, BP[0], BP[1])
+    y_zero = apply_bandpass(x, FS, BP[0], BP[1])
 
     # Fallback path: filter a short window (< FILTFILT_MIN) around the spike -> lfilter
     half = 250                                             # 500-sample window (< 606) forces fallback
     c = int(t0 * FS)
     win = x[c - half:c + half]
-    y_fb_win = create_bandpass_filter(win, FS, BP[0], BP[1])
+    y_fb_win = apply_bandpass(win, FS, BP[0], BP[1])
     y_fb = np.full(n, np.nan)
     y_fb[c - half:c + half] = y_fb_win
 
@@ -130,7 +130,7 @@ def main():
     plt.axvline(50, color="tab:red", ls="--", lw=1, label="50 Hz notch")
     plt.ylim(-80, 5); plt.xlim(0, 65)
     plt.xlabel("frequency (Hz)"); plt.ylabel("gain (dB)")
-    plt.title("Production filter magnitude response (zero-phase path)")
+    plt.title("Filter magnitude response (zero-phase path)")
     plt.legend(fontsize=8); plt.tight_layout()
     plt.savefig(RESULTS / "fig_magnitude.png", dpi=300); plt.close()
 

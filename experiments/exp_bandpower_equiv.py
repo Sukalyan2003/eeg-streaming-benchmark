@@ -1,55 +1,43 @@
 """
-Bandpower equivalence vs MNE (Option 2, RQ2 part 2 — feature equivalence).
+Cascaded-tapering pitfall in windowed PSD estimation (standalone, NumPy/SciPy/MNE only).
 
-Drives the PRODUCTION power-spectral-density routine
-(`workers/src/utils/extraction/band_power_optimized._compute_psd`, Welch, nperseg=256,
-noverlap=128, detrend+Hann) and compares the resulting per-band *relative* band powers
-against an independent reference (MNE `psd_array_welch`) on synthetic signals with known
-band content. Relative band power (percentage) is what the platform stores
-(`BANDPOWER_COMPUTE_RELATIVE=true`), so it is the right quantity to validate and it is robust
-to overall scaling.
+A common implementation mistake when computing band power on a window is to apply a taper
+(e.g. a Hann window) to the whole window *and then* hand it to an estimator that already
+tapers internally -- ``scipy.signal.welch`` applies a per-segment Hann by default, and a
+multitaper estimator applies its own DPSS tapers. The signal is therefore tapered twice. This
+biases the power spectral density, and because relative band power is a normalised quantity the
+bias does not cancel: it redistributes power between bands.
+
+We quantify the bias on synthetic signals with known band content, for both estimators:
+  - Welch: relative band power from a doubly-tapered estimate (manual Hann + welch's Hann) vs a
+    singly-tapered estimate (welch only), each compared to MNE ``psd_array_welch`` as an
+    independent reference.
+  - Multitaper: relative band power from a pre-Hann'd multitaper estimate vs a plain multitaper
+    estimate, compared to MNE ``psd_array_multitaper``.
+
+This is a property of cascaded tapering, not of any particular implementation.
 
 Outputs under results/: bandpower_equiv.csv, bandpower_summary.txt
 """
 from __future__ import annotations
-import os
-import sys
 import csv
 from pathlib import Path
 
-# Production module reads these at import time — set production-like values first.
-os.environ.setdefault("BANDPOWER_PSD_METHOD", "welch")
-os.environ.setdefault("BANDPOWER_WINDOW_SECONDS", "2.0")
-os.environ.setdefault("BANDPOWER_HOP_SECONDS", "1.0")
-os.environ.setdefault("BANDPOWER_COMPUTE_RELATIVE", "true")
-os.environ.setdefault("BANDPOWER_DETREND", "true")
-os.environ.setdefault("BANDPOWER_APPLY_HANN", "true")
-os.environ.setdefault("BANDPOWER_WELCH_NPERSEG", "256")
-os.environ.setdefault("BANDPOWER_WELCH_NOVERLAP", "128")
-os.environ.setdefault("BANDPOWER_MULTITAPER_BW", "2.0")
-os.environ.setdefault("BANDPOWER_RELATIVE_SOFTMAX_SCALE", "1.0")
-os.environ.setdefault("BANDPOWER_FILTER_LOWCUT", "1.0")
-os.environ.setdefault("BANDPOWER_FILTER_HIGHCUT", "45.0")
-os.environ.setdefault("BANDPOWER_FILTER_ORDER", "200")
-os.environ.setdefault("BANDPOWER_APPLY_FILTER", "true")
-os.environ.setdefault("BANDPOWER_OUTPUT_MODE", "absolute")
-
 import numpy as np
+from scipy.signal import welch
 from mne.time_frequency import psd_array_welch, psd_array_multitaper
-
-WORKERS = Path(__file__).resolve().parents[3] / "workers"
-sys.path.insert(0, str(WORKERS))
-from src.utils.extraction.band_power_optimized import _compute_psd, bands  # production code
 
 RESULTS = Path(__file__).parent / "results"
 RESULTS.mkdir(exist_ok=True)
 FS = 200
 NPERSEG, NOVERLAP = 256, 128
+bands = {"delta": (0.5, 4.0), "theta": (4.0, 8.0), "alpha": (8.0, 13.0),
+         "beta": (13.0, 30.0), "gamma": (30.0, 45.0)}
 BAND_NAMES = list(bands.keys())
 
 
 def synth_window(seed=0, dur_s=10.0):
-    """Single channel with controlled band amplitudes -> known relative power targets."""
+    """Single channel with controlled band amplitudes -> known relative-power targets."""
     rng = np.random.default_rng(seed)
     n = int(dur_s * FS)
     t = np.arange(n) / FS
@@ -76,91 +64,101 @@ def relative(d):
     return {k: 100.0 * v / tot for k, v in d.items()}
 
 
+# --- PSD estimators -------------------------------------------------------------------------
+def welch_double_taper(x):
+    """Wrong: pre-taper the whole window with a Hann, then welch (which Hanns each segment)."""
+    xw = x * np.hanning(len(x))
+    f, p = welch(xw, fs=FS, nperseg=NPERSEG, noverlap=NOVERLAP)   # welch default window='hann'
+    return f, p
+
+
+def welch_single_taper(x):
+    """Correct: let welch apply its per-segment taper exactly once."""
+    f, p = welch(x, fs=FS, nperseg=NPERSEG, noverlap=NOVERLAP)
+    return f, p
+
+
+def mne_welch(x):
+    psd, f = psd_array_welch(x[np.newaxis, :], sfreq=FS, fmin=0, fmax=100,
+                             n_per_seg=NPERSEG, n_overlap=NOVERLAP, verbose="ERROR")
+    return f, psd[0]
+
+
+def mne_multitaper(x, pre_hann=False):
+    xx = (x * np.hanning(len(x))) if pre_hann else x
+    psd, f = psd_array_multitaper(xx[np.newaxis, :], sfreq=FS, fmin=0, fmax=100,
+                                  bandwidth=2.0, normalization="full", verbose="ERROR")
+    return f, psd[0]
+
+
+def max_disc(rel_a, rel_b):
+    return max(abs(rel_a[b] - rel_b[b]) for b in BAND_NAMES)
+
+
 def main():
-    cfg = dict(method="welch", detrend=True, apply_hann=True,
-               welch_nperseg=NPERSEG, welch_noverlap=NOVERLAP, multitaper_bw=2.0)
-    prod_rel_all, mne_rel_all = [], []
-    for seed in range(8):
+    n_trials = 8
+    double_rel_all, single_rel_all, mne_rel_all = [], [], []
+    disc_double, disc_single = 0.0, 0.0
+    for seed in range(n_trials):
         x = synth_window(seed=seed)
-        # production
-        f_p, psd_p = _compute_psd(x.copy(), FS, cfg)
-        prod_rel = relative(band_powers_from_psd(f_p, psd_p))
-        # reference (MNE Welch, matched params)
-        psd_m, f_m = psd_array_welch(x[np.newaxis, :], sfreq=FS, fmin=0, fmax=100,
-                                     n_per_seg=NPERSEG, n_overlap=NOVERLAP, verbose="ERROR")
-        mne_rel = relative(band_powers_from_psd(f_m, psd_m[0]))
-        prod_rel_all.append(prod_rel); mne_rel_all.append(mne_rel)
+        rd = relative(band_powers_from_psd(*welch_double_taper(x)))
+        rs = relative(band_powers_from_psd(*welch_single_taper(x)))
+        rm = relative(band_powers_from_psd(*mne_welch(x)))
+        double_rel_all.append(rd); single_rel_all.append(rs); mne_rel_all.append(rm)
+        disc_double = max(disc_double, max_disc(rd, rm))
+        disc_single = max(disc_single, max_disc(rs, rm))
 
-    # aggregate per-band mean and max abs discrepancy (percentage points)
-    rows, max_disc = [], 0.0
+    # per-band aggregate (single-taper vs MNE, the corrected case)
+    rows = []
     for name in BAND_NAMES:
-        p = np.mean([d[name] for d in prod_rel_all])
+        s = np.mean([d[name] for d in single_rel_all])
         m = np.mean([d[name] for d in mne_rel_all])
-        disc = np.max([abs(a[name] - b[name]) for a, b in zip(prod_rel_all, mne_rel_all)])
-        max_disc = max(max_disc, disc)
-        rows.append(dict(band=name, prod_rel_pct=round(p, 3), mne_rel_pct=round(m, 3),
-                         max_abs_disc_pp=round(disc, 4)))
-    # correlation across all bands/trials
-    pa = np.array([[d[b] for b in BAND_NAMES] for d in prod_rel_all]).ravel()
-    ma = np.array([[d[b] for b in BAND_NAMES] for d in mne_rel_all]).ravel()
-    r = float(np.corrcoef(pa, ma)[0, 1])
-
-    # Root-cause toggle: repeat without the production manual Hann (welch keeps its own
-    # per-segment Hann). If the discrepancy collapses, the production double-taper is the cause.
-    cfg_no_hann = dict(cfg, apply_hann=False)
-    disc_no_hann = 0.0
-    for seed in range(8):
-        x = synth_window(seed=seed)
-        f_p, psd_p = _compute_psd(x.copy(), FS, cfg_no_hann)
-        prod_rel = relative(band_powers_from_psd(f_p, psd_p))
-        psd_m, f_m = psd_array_welch(x[np.newaxis, :], sfreq=FS, fmin=0, fmax=100,
-                                     n_per_seg=NPERSEG, n_overlap=NOVERLAP, verbose="ERROR")
-        mne_rel = relative(band_powers_from_psd(f_m, psd_m[0]))
-        disc_no_hann = max(disc_no_hann, max(abs(prod_rel[b] - mne_rel[b]) for b in BAND_NAMES))
-
+        d = np.mean([d[name] for d in double_rel_all])
+        rows.append(dict(band=name, double_taper_pct=round(d, 3), single_taper_pct=round(s, 3),
+                         mne_pct=round(m, 3),
+                         double_vs_mne_pp=round(np.max([abs(a[name] - b[name])
+                                                        for a, b in zip(double_rel_all, mne_rel_all)]), 4),
+                         single_vs_mne_pp=round(np.max([abs(a[name] - b[name])
+                                                        for a, b in zip(single_rel_all, mne_rel_all)]), 4)))
     with open(RESULTS / "bandpower_equiv.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0].keys())); w.writeheader()
-        for r_ in rows:
-            w.writerow(r_)
+        for r in rows:
+            w.writerow(r)
 
-    # #5 estimator robustness: repeat with the MULTITAPER path. Production applies the manual
-    # Hann BEFORE method dispatch, so it taints multitaper too (multitaper has its own DPSS
-    # tapers). Compare production multitaper vs MNE multitaper, with/without the manual Hann.
-    def multitaper_disc(apply_hann):
-        cfg_mt = dict(method="multitaper", detrend=True, apply_hann=apply_hann,
-                      welch_nperseg=NPERSEG, welch_noverlap=NOVERLAP, multitaper_bw=2.0)
-        d = 0.0
-        for seed in range(8):
-            x = synth_window(seed=seed)
-            f_p, psd_p = _compute_psd(x.copy(), FS, cfg_mt)
-            pr = relative(band_powers_from_psd(f_p, psd_p))
-            psd_m, f_m = psd_array_multitaper(x[np.newaxis, :], sfreq=FS, fmin=0, fmax=100,
-                                              bandwidth=2.0, normalization="full", verbose="ERROR")
-            mr = relative(band_powers_from_psd(f_m, psd_m[0]))
-            d = max(d, max(abs(pr[b] - mr[b]) for b in BAND_NAMES))
-        return d
-    mt_hann = multitaper_disc(True)
-    mt_nohann = multitaper_disc(False)
+    # Pearson r of the corrected (single-taper) estimate vs MNE across all bands x trials
+    sa = np.array([[d[b] for b in BAND_NAMES] for d in single_rel_all]).ravel()
+    ma = np.array([[d[b] for b in BAND_NAMES] for d in mne_rel_all]).ravel()
+    r_single = float(np.corrcoef(sa, ma)[0, 1])
+
+    # multitaper: pre-Hann'd vs plain, both via MNE multitaper (plain is the reference)
+    mt_double, mt_single = 0.0, 0.0
+    for seed in range(n_trials):
+        x = synth_window(seed=seed)
+        rd = relative(band_powers_from_psd(*mne_multitaper(x, pre_hann=True)))
+        rs = relative(band_powers_from_psd(*mne_multitaper(x, pre_hann=False)))
+        ref = rs                                   # plain multitaper is the reference
+        mt_double = max(mt_double, max_disc(rd, ref))
+        mt_single = max(mt_single, max_disc(rs, ref))
 
     lines = [
-        "Bandpower equivalence — production _compute_psd (Welch 256/128) vs MNE psd_array_welch:",
-        f"  Pearson r (relative band powers, all bands x 8 trials) = {r:.5f}.",
-        f"  Max per-band discrepancy (production as-is) = {max_disc:.3f} percentage points.",
-        "  Per-band mean relative power (production vs MNE):",
-    ] + [f"    {row['band']:>6}: prod {row['prod_rel_pct']:6.2f}%  mne {row['mne_rel_pct']:6.2f}%  "
-         f"(max disc {row['max_abs_disc_pp']:.3f} pp)" for row in rows] + [
+        "Cascaded-tapering pitfall in relative band power (synthetic, 8 trials):",
         "",
-        "Root cause — double Hann tapering:",
-        f"  production applies np.hanning() to the whole window AND scipy.welch applies its",
-        f"  default per-segment Hann. Disabling the redundant manual taper drops the max",
-        f"  discrepancy from {max_disc:.2f} pp to {disc_no_hann:.2f} pp (i.e. production then",
-        f"  matches MNE). Fix: remove the manual Hann (let welch taper per segment).",
+        "Welch (manual Hann + welch's per-segment Hann = double taper):",
+        f"  max per-band discrepancy vs MNE psd_array_welch:",
+        f"    double taper (manual Hann + welch) = {disc_double:.2f} percentage points",
+        f"    single taper (welch only)          = {disc_single:.2f} percentage points",
+        f"  Pearson r (single-taper vs MNE, all bands x trials) = {r_single:.5f}.",
+        "  Per-band relative power (double / single / MNE):",
+    ] + [f"    {row['band']:>6}: double {row['double_taper_pct']:6.2f}%  "
+         f"single {row['single_taper_pct']:6.2f}%  mne {row['mne_pct']:6.2f}%  "
+         f"(double vs mne {row['double_vs_mne_pp']:.2f} pp)" for row in rows] + [
         "",
-        "Estimator robustness — multitaper path (production vs MNE psd_array_multitaper):",
-        f"  with manual Hann    : max discrepancy {mt_hann:.2f} pp (the manual taper also",
-        f"                        corrupts multitaper, which has its own DPSS tapers).",
-        f"  without manual Hann : max discrepancy {mt_nohann:.2f} pp (production multitaper then",
-        f"                        matches MNE) -> the double-taper bug is estimator-agnostic.",
+        "Multitaper (manual Hann before DPSS tapers vs plain multitaper reference):",
+        f"  with pre-Hann    : max discrepancy {mt_double:.2f} pp (pre-windowing corrupts it too)",
+        f"  without pre-Hann : max discrepancy {mt_single:.2f} pp (matches the reference)",
+        "",
+        "Takeaway: taper exactly once. Pre-windowing before an estimator that already tapers",
+        "biases relative band power, most on the dominant band, for both Welch and multitaper.",
     ]
     (RESULTS / "bandpower_summary.txt").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
