@@ -91,6 +91,9 @@ overlap for small chunks, or pad-to-floor-then-trim), and make the fallback obse
   the production estimator matches MNE.
 - **Fix:** remove the manual Hann (let `welch` taper per segment), or pass `window='boxcar'`
   to `welch`. Until then, relative bandpower (a stored clinical feature) is biased.
+- **Estimator-agnostic:** the same manual taper also corrupts the production **multitaper**
+  path (which has its own DPSS tapers): max discrepancy vs MNE multitaper **9.1 pp** with the
+  manual Hann, **0.0 pp** without — so the bug is in the shared pre-step, not the estimator.
 
 ## Result 6 — Real-data confirmation on CHB-MIT (`exp_realdata.py`)
 External validity on one open-access clinical recording (PhysioNet CHB-MIT `chb01_01.edf`,
@@ -105,14 +108,39 @@ External validity on one open-access clinical recording (PhysioNet CHB-MIT `chb0
   is **fs-dependent** (~393 ms at 256 Hz vs ~500 ms at 200 Hz) — an honest nuance for the paper.
 - Figure: `results/fig_realdata_seam.png`.
 
+## Result 7 — Generalization across FIR order, the transition, and seed robustness (`exp_regime.py`)
+- **FIR-order sweep:** the zero-phase floor is exactly `3 × (order+1)` taps and the fallback
+  shift is `(taps−1)/2/fs`, both scaling with order: order 100 → floor 306 samples (1.53 s @
+  200 Hz), shift 255 ms; 200 → 606 (3.03 s), 505 ms; 300 → 906 (4.53 s), 755 ms; 400 → 1206
+  (6.03 s), 1005 ms. This generalizes the design criterion **`chunk + 2·overlap ≥ 3·taps`** to
+  any FIR order (`regime_order_sweep.csv`, `fig_order_floor.png`).
+- **Transition:** sweeping the total filtered length through the floor shows boundary error
+  collapse sharply at `L = 3·taps` (`regime_transition.csv`, `fig_transition.png`).
+- **Seed robustness (12 seeds, 8 s windows):** naive boundary RMSE **15.9 ± 4.1 µV**, overlap-add
+  **0.273 ± 0.035 µV**, reduction **35.1 ± 2.3 dB** — the headline effect is stable, not a single
+  draw.
+
+## Result 8 — Real-data confirmation of R4–R5 on Siena (`exp_realdata_features.py`)
+External validity on a recording with **genuine** non-EEG channels (PhysioNet Siena Scalp EEG
+`PN00-1.edf`, 512 Hz, 10–20 monopolar EEG + a real `EKG EKG` channel + SpO2/HR; gitignored):
+- **R4 confirmed:** canonicalization separates **all 29 EEG electrodes** (`EEG Fp1`→FP1, …) from
+  the 6 genuine non-EEG channels (`EKG EKG`→`ecg`, `SPO2`/`HR`/markers→`aux`/`unknown`).
+- **R5 confirmed:** including the **real ECG** channel in the average reference biases EEG C3
+  relative alpha power by **+127.9%** (3.10% → 7.08%) — larger than the synthetic case, confirming
+  channel-aware exclusion is required on real data. (Magnitude is recording-dependent; the
+  direction/mechanism is robust.)
+
 ## Reproduce
 ```bash
 cd Research/Option-2-Non-AI-Based/experiments
 python3 run_boundary_experiment.py   # Results 1–2 (overlap-add + filtfilt floor)
 python3 exp_filter_fidelity.py       # Result 3 (magnitude + event timing)
 python3 exp_channels_features.py     # Result 4 (canonicalization + feature integrity)
-python3 exp_bandpower_equiv.py       # Result 5 (bandpower equivalence vs MNE; double-Hann)
-# Result 6 (real data) needs one open EDF (gitignored):
-curl -o data/chb01_01.edf https://physionet.org/files/chbmit/1.0.0/chb01/chb01_01.edf
+python3 exp_bandpower_equiv.py       # Result 5 (bandpower equivalence vs MNE; welch+multitaper)
+python3 exp_regime.py                # Result 7 (FIR-order sweep, transition, seed robustness)
+# Results 6 & 8 need open EDFs (gitignored under data/):
+curl -o data/chb01_01.edf  https://physionet.org/files/chbmit/1.0.0/chb01/chb01_01.edf
 python3 exp_realdata.py              # Result 6 (CHB-MIT confirmation of R1–R3)
+curl -o data/siena_PN00-1.edf https://physionet.org/files/siena-scalp-eeg/1.0.0/PN00/PN00-1.edf
+python3 exp_realdata_features.py     # Result 8 (Siena confirmation of R4–R5)
 ```

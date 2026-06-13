@@ -35,7 +35,7 @@ os.environ.setdefault("BANDPOWER_APPLY_FILTER", "true")
 os.environ.setdefault("BANDPOWER_OUTPUT_MODE", "absolute")
 
 import numpy as np
-from mne.time_frequency import psd_array_welch
+from mne.time_frequency import psd_array_welch, psd_array_multitaper
 
 WORKERS = Path(__file__).resolve().parents[3] / "workers"
 sys.path.insert(0, str(WORKERS))
@@ -123,6 +123,25 @@ def main():
         for r_ in rows:
             w.writerow(r_)
 
+    # #5 estimator robustness: repeat with the MULTITAPER path. Production applies the manual
+    # Hann BEFORE method dispatch, so it taints multitaper too (multitaper has its own DPSS
+    # tapers). Compare production multitaper vs MNE multitaper, with/without the manual Hann.
+    def multitaper_disc(apply_hann):
+        cfg_mt = dict(method="multitaper", detrend=True, apply_hann=apply_hann,
+                      welch_nperseg=NPERSEG, welch_noverlap=NOVERLAP, multitaper_bw=2.0)
+        d = 0.0
+        for seed in range(8):
+            x = synth_window(seed=seed)
+            f_p, psd_p = _compute_psd(x.copy(), FS, cfg_mt)
+            pr = relative(band_powers_from_psd(f_p, psd_p))
+            psd_m, f_m = psd_array_multitaper(x[np.newaxis, :], sfreq=FS, fmin=0, fmax=100,
+                                              bandwidth=2.0, normalization="full", verbose="ERROR")
+            mr = relative(band_powers_from_psd(f_m, psd_m[0]))
+            d = max(d, max(abs(pr[b] - mr[b]) for b in BAND_NAMES))
+        return d
+    mt_hann = multitaper_disc(True)
+    mt_nohann = multitaper_disc(False)
+
     lines = [
         "Bandpower equivalence — production _compute_psd (Welch 256/128) vs MNE psd_array_welch:",
         f"  Pearson r (relative band powers, all bands x 8 trials) = {r:.5f}.",
@@ -136,6 +155,12 @@ def main():
         f"  default per-segment Hann. Disabling the redundant manual taper drops the max",
         f"  discrepancy from {max_disc:.2f} pp to {disc_no_hann:.2f} pp (i.e. production then",
         f"  matches MNE). Fix: remove the manual Hann (let welch taper per segment).",
+        "",
+        "Estimator robustness — multitaper path (production vs MNE psd_array_multitaper):",
+        f"  with manual Hann    : max discrepancy {mt_hann:.2f} pp (the manual taper also",
+        f"                        corrupts multitaper, which has its own DPSS tapers).",
+        f"  without manual Hann : max discrepancy {mt_nohann:.2f} pp (production multitaper then",
+        f"                        matches MNE) -> the double-taper bug is estimator-agnostic.",
     ]
     (RESULTS / "bandpower_summary.txt").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))

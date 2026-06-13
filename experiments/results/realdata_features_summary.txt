@@ -1,0 +1,14 @@
+Siena PN00-1.edf — fs=512 Hz, 35 channels, segment 100-220s.
+
+R4 — channel canonicalization on real labels:
+  EEG channels identified (29): e.g. [('EEG Fp1', 'FP1'), ('EEG F3', 'F3'), ('EEG C3', 'C3'), ('EEG P3', 'P3'), ('EEG O1', 'O1')]
+  non-EEG channels (6): [('EKG EKG', 'ecg'), ('SPO2', 'aux'), ('HR', 'aux'), ('1', 'aux'), ('2', 'aux'), ('MK', 'unknown')]
+  real EKG channel detected as ECG: 'EKG EKG'.
+
+R5 — feature integrity (relative alpha power of EEG C3, average reference):
+  channel-aware reference (EEG only):      3.10%
+  reference wrongly including the EKG:     7.08%
+  => bias from not excluding the real ECG: +127.9%.
+
+Confirms on real EEG: canonicalization separates EEG from genuine non-EEG channels, and
+mixing the real ECG into the reference measurably biases a quantitative EEG feature.

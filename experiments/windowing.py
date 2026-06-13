@@ -24,31 +24,31 @@ from domain.helpers.filters import create_bandpass_filter, create_notch_filter
 
 
 def _apply(x: np.ndarray, fs: int, bp: tuple[float, float] | None,
-           notch_hz: float | None) -> np.ndarray:
+           notch_hz: float | None, order: int = 200) -> np.ndarray:
     y = x
     if bp is not None:
-        y = create_bandpass_filter(y, fs, bp[0], bp[1])
+        y = create_bandpass_filter(y, fs, bp[0], bp[1], order=order)
     if notch_hz is not None:
         y = create_notch_filter(y, fs, notch_hz)
     return y
 
 
-def filter_whole(x, fs, bp=(0.5, 30.0), notch_hz=50.0):
-    return _apply(np.asarray(x, float), fs, bp, notch_hz)
+def filter_whole(x, fs, bp=(0.5, 30.0), notch_hz=50.0, order=200):
+    return _apply(np.asarray(x, float), fs, bp, notch_hz, order)
 
 
-def filter_naive(x, fs, win_s=1.0, bp=(0.5, 30.0), notch_hz=50.0):
+def filter_naive(x, fs, win_s=1.0, bp=(0.5, 30.0), notch_hz=50.0, order=200):
     x = np.asarray(x, float)
     n = x.size
     w = int(round(win_s * fs))
     out = np.empty(n, dtype=np.float64)
     for a in range(0, n, w):
         b = min(a + w, n)
-        out[a:b] = _apply(x[a:b], fs, bp, notch_hz)
+        out[a:b] = _apply(x[a:b], fs, bp, notch_hz, order)
     return out
 
 
-def filter_overlap(x, fs, win_s=1.0, overlap_s=0.5, bp=(0.5, 30.0), notch_hz=50.0):
+def filter_overlap(x, fs, win_s=1.0, overlap_s=0.5, bp=(0.5, 30.0), notch_hz=50.0, order=200):
     x = np.asarray(x, float)
     n = x.size
     w = int(round(win_s * fs))
@@ -58,7 +58,7 @@ def filter_overlap(x, fs, win_s=1.0, overlap_s=0.5, bp=(0.5, 30.0), notch_hz=50.
         b = min(a + w, n)
         ea = max(0, a - pad)          # extended window start (real samples only)
         eb = min(n, b + pad)          # extended window end
-        ext = _apply(x[ea:eb], fs, bp, notch_hz)
+        ext = _apply(x[ea:eb], fs, bp, notch_hz, order)
         out[a:b] = ext[a - ea: a - ea + (b - a)]   # keep the clean center
     return out
 

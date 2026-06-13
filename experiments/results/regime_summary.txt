@@ -1,0 +1,12 @@
+#1 FIR-order sweep (zero-phase length floor = 3 x (order+1) taps):
+  order 100: 102 taps, floor 306 samples = 1.53s@200Hz / 1.195s@256Hz; min overlap @1s window = 0.265s; fallback shift 255.0ms (theory 252.5ms).
+  order 200: 202 taps, floor 606 samples = 3.03s@200Hz / 2.367s@256Hz; min overlap @1s window = 1.015s; fallback shift 505.0ms (theory 502.5ms).
+  order 300: 302 taps, floor 906 samples = 4.53s@200Hz / 3.539s@256Hz; min overlap @1s window = 1.765s; fallback shift 755.0ms (theory 752.5ms).
+  order 400: 402 taps, floor 1206 samples = 6.03s@200Hz / 4.711s@256Hz; min overlap @1s window = 2.515s; fallback shift 1005.0ms (theory 1002.5ms).
+
+#3 Transition: boundary error drops sharply as L=chunk+2*overlap crosses the floor (3.03s). See regime_transition.csv / fig_transition.png.
+
+#2 Seed robustness (n=12 seeds, 8s windows):
+  naive boundary RMSE   = 15.875 +/- 4.070 uV
+  overlap boundary RMSE = 0.2734 +/- 0.0352 uV
+  reduction             = 35.1 +/- 2.3 dB

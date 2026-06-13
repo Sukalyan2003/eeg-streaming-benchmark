@@ -38,13 +38,17 @@ naming; spectral band-power estimation. End each with the gap we fill.
   shift; channel family-classification accuracy; relative band-power agreement (vs MNE).
 - E. Reproducibility: pinned source commits, fixed seeds, released code.
 
-**IV. Results (~1.25–1.5 p)** — one subsection per result, each with a figure/table:
+**IV. Results (~1.5 p)** — one subsection per result, each with a figure/table:
 - R1 Overlap-add removes seam artifacts (`fig_seam`, `fig_profile`, `fig_summary`).
 - R2 The `filtfilt` length floor and the small-chunk fallback regime (`metrics.csv`).
 - R3 Magnitude fidelity + the ~500 ms event mis-timing in the fallback (`fig_magnitude`,
   `fig_transient_shift`).
 - R4 Channel canonicalization accuracy + feature integrity (ECG contamination).
-- R5 Bandpower equivalence vs MNE and the double-Hann taper bias.
+- R5 Bandpower equivalence vs MNE (Welch **and** multitaper) and the double-Hann taper bias.
+- R6 Real-data confirmation of R1–R3 on CHB-MIT (`fig_realdata_seam`).
+- R7 Generalization: FIR-order sweep (floor = 3·(order+1)), the transition curve, and seed
+  robustness with mean ± SD (`fig_order_floor`, `fig_transition`).
+- R8 Real-data confirmation of R4–R5 on Siena (genuine EKG channel).
 
 **V. Discussion (~0.5 p).** Deterministic design criteria (e.g. `chunk + 2·overlap ≥ 3·taps`;
 single taper; canonicalize-then-montage); clinical impact (event timing, biased QEEG);
@@ -54,10 +58,13 @@ deterministic code properties; R4–R5 magnitudes are illustrative).
 **VI. Conclusion + future work (~0.25 p).** A small set of correctness invariants for streaming
 clinical EEG DSP; pointer to real-data confirmation (CHB-MIT/TUH) and the AI track.
 
-**Figures/Tables (reuse the experiment outputs):** Fig.1 seam waveform; Fig.2 seam error
-profile; Fig.3 boundary-RMSE + latency vs window; Fig.4 magnitude response; Fig.5 transient
-shift; Table I canonicalization; Table II bandpower equivalence (prod vs MNE, with/without
-double-Hann).
+**Figures/Tables (reuse the experiment outputs):** Fig.1 seam waveform (`fig_seam`); Fig.2 seam
+error profile (`fig_profile`); Fig.3 boundary-RMSE + latency vs window (`fig_summary`); Fig.4
+magnitude response (`fig_magnitude`); Fig.5 transient shift (`fig_transient_shift`); Fig.6 the
+order floor (`fig_order_floor`); Fig.7 the transition curve (`fig_transition`); Fig.8 real-EEG
+seam (`fig_realdata_seam`). Table I canonicalization (synthetic + Siena); Table II bandpower
+equivalence (prod vs MNE Welch & multitaper, with/without double-Hann); Table III FIR-order
+sweep (floor and shift vs order). Headline numbers carry mean ± SD across 12 seeds.
 
 ## 2. Contributions (explicit, for the intro)
 1. A reproducible methodology that turns a deployed pipeline into a correctness benchmark.

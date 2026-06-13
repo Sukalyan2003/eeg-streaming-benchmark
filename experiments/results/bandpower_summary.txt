@@ -13,3 +13,9 @@ Root cause — double Hann tapering:
   default per-segment Hann. Disabling the redundant manual taper drops the max
   discrepancy from 11.92 pp to 0.64 pp (i.e. production then
   matches MNE). Fix: remove the manual Hann (let welch taper per segment).
+
+Estimator robustness — multitaper path (production vs MNE psd_array_multitaper):
+  with manual Hann    : max discrepancy 9.09 pp (the manual taper also
+                        corrupts multitaper, which has its own DPSS tapers).
+  without manual Hann : max discrepancy 0.00 pp (production multitaper then
+                        matches MNE) -> the double-taper bug is estimator-agnostic.
