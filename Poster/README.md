@@ -23,8 +23,8 @@ is the zero-phase filter actually zero-phase?
 
 - A standard FIR bandpass (order 200) + IIR notch (`experiments/dsp.py`, SciPy only), applied two
   ways: naive per-window versus overlap-add (filter an extended window, keep the center).
-- Synthetic signals with known spectra for ground truth, plus multiple PhysioNet CHB-MIT subjects
-  for external validity.
+- Synthetic signals with known spectra for ground truth, plus two real datasets for external
+  validity: PhysioNet CHB-MIT (256 Hz) and Sleep-EDF (100 Hz).
 - Sweep window sizes; characterize the `filtfilt` length floor (`3 × taps`) and the causal-fallback
   group-delay shift across FIR orders.
 

@@ -15,7 +15,8 @@ Length Floor*
 Networked clinical EEG viewers filter and re-reference signals on demand, one short window at a
 time. Using a standard-library reference implementation (FIR bandpass with
 `scipy.signal.filtfilt`, IIR notch) evaluated against synthetic ground truth and multiple open
-clinical recordings (PhysioNet CHB-MIT), we show that windowed filtering is correct only under
+clinical datasets at two sampling rates (PhysioNet CHB-MIT at 256 Hz, Sleep-EDF at 100 Hz), we
+show that windowed filtering is correct only under
 two conditions that are easy to violate. First, filtering display windows independently produces
 visible chunk-seam artifacts; an overlap-add scheme that filters an extended window and keeps the
 clean center removes them by 34.7 dB on synthetic data and more on real EEG, at negligible
@@ -30,7 +31,7 @@ artifact-free. All code and figures are released; clinical EDFs are fetched at r
 
 ## Contributions (poster framing)
 1. Overlap-add removes window-seam artifacts in streaming EEG filtering (~35 dB, more on real
-   EEG) at negligible latency, confirmed on synthetic and multiple CHB-MIT subjects.
+   EEG) at negligible latency, confirmed on synthetic and two real datasets (CHB-MIT, Sleep-EDF).
 2. A zero-phase length floor: below `3·taps` samples, forward--backward filtering cannot run and a
    causal fallback mis-times events by up to ~500 ms; the floor and shift scale with FIR order.
 3. A deterministic design rule (`chunk + 2·overlap ≥ 3·taps`) that prevents both failures,

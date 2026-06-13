@@ -1,0 +1,15 @@
+Second-dataset confirmation — Sleep-EDF Expanded (n=8 subjects, 100 Hz, 8 s windows):
+
+  zero-phase floor = 606 samples = 6.06 s at 100 Hz (vs 2.37 s at 256 Hz).
+  R1 overlap-add boundary-RMSE reduction = 23.4 +/- 2.0 dB
+  R3 fallback group-delay shift = 1001 +/- 2 ms (theory 1005 ms; |measured-theory| = 3.8 +/- 2.2 ms)
+
+Per-subject:
+  SC4001E0: dB=19.04, shift=1000.0 ms (theory 1005.0)
+  SC4011E0: dB=23.85, shift=1000.0 ms (theory 1005.0)
+  SC4021E0: dB=25.11, shift=1000.0 ms (theory 1005.0)
+  SC4031E0: dB=25.06, shift=1000.0 ms (theory 1005.0)
+  SC4041E0: dB=24.73, shift=1000.0 ms (theory 1005.0)
+  SC4051E0: dB=21.47, shift=1005.0 ms (theory 1005.0)
+  SC4061E0: dB=23.2, shift=1000.0 ms (theory 1005.0)
+  SC4071E0: dB=24.7, shift=1005.0 ms (theory 1005.0)

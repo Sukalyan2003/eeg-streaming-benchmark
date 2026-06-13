@@ -60,7 +60,8 @@ for the cascaded-tapering comparison.
 ## 5. Data
 
 - **Synthetic** signals with known spectra (ground truth for filter fidelity and overlap-add).
-- **PhysioNet CHB-MIT** scalp EEG (256 Hz) for multi-subject external validity of the filtering
+- **PhysioNet CHB-MIT** (pediatric epilepsy, bipolar, 256 Hz) and **Sleep-EDF Expanded** (sleep,
+  Fpz-Cz/Pz-Oz, 100 Hz) for two-dataset, two-sampling-rate external validity of the filtering
   results; EDFs are fetched at run time and gitignored.
 
 ## 6. Experimental design → results (already obtained — see `experiments/FINDINGS.md`)
@@ -77,8 +78,9 @@ for the cascaded-tapering comparison.
 5. **R5 — Cascaded-tapering pitfall.** Double tapering biases relative band power up to **11.9 pp**
    (Welch) / **9.1 pp** (multitaper); tapering once matches the reference (0.64 / 0.0 pp). Taper
    once.
-6. **R6 — Multi-subject CHB-MIT confirmation.** R1 and R3 reproduced across multiple subjects
-   (mean ± SD); fallback shift matches `(taps−1)/2/fs` (~393 ms at 256 Hz).
+6. **R6 — Two-dataset real-data confirmation.** R1 and R3 reproduced across 10 CHB-MIT subjects
+   (50.6 ± 2.2 dB; shift 389 ± 7 ms vs 393 predicted) **and** Sleep-EDF at 100 Hz, making the
+   `fs`-dependent floor explicit (6.06 s / ~1 s shift at 100 Hz vs 2.37 s / ~0.4 s at 256 Hz).
 
 ## 7. Evaluation metrics
 

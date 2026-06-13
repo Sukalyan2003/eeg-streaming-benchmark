@@ -69,18 +69,24 @@ Environment: Python 3.12, numpy 2.4.1, scipy 1.17.0, mne 1.11.0.
   bias is therefore a property of cascaded tapering, not of one estimator.
 - **Rule:** taper exactly once.
 
-## Result 6 — Multi-subject real-data confirmation on CHB-MIT (`exp_multisubject.py`)
-External validity across multiple open-access clinical recordings (PhysioNet CHB-MIT, first
-recording of each subject; 256 Hz; raw EDFs gitignored under `data/`):
+## Result 6 — Multi-subject, two-dataset real-data confirmation
+External validity across two open datasets with different populations, montages, and sampling
+rates (raw EDFs gitignored under `data/`).
+
+**CHB-MIT** (pediatric epilepsy, bipolar, 256 Hz; first recording of each subject; `exp_multisubject.py`):
 - **R1 confirmed:** overlap-add reduces window-seam boundary RMSE by **50.6 ± 2.2 dB** (mean ± SD
-  across **10** subjects) — comparable to or larger than synthetic, with near-zero interior
-  error (zero-phase interior).
-- **R3 confirmed:** the causal-fallback group-delay shift, measured by cross-correlation against
-  the zero-phase output, is **389 ± 7 ms**, matching the theoretical `(taps−1)/2/fs`
-  (|measured − theory| = **4.0 ± 6.5 ms**). The shift is `fs`-dependent (~393 ms at 256 Hz vs
-  ~500 ms at 200 Hz), and the floor (606 samples) is **2.37 s** at 256 Hz.
-- Per-subject values: `multisubject_chbmit.csv`; figure `fig_realdata_seam.png` (representative
-  seam, `exp_realdata.py`).
+  across **10** subjects) — comparable to or larger than synthetic, with near-zero interior error.
+- **R3 confirmed:** the causal-fallback group-delay shift, by cross-correlation against the
+  zero-phase output, is **389 ± 7 ms**, matching `(taps−1)/2/fs` (|measured − theory| =
+  **4.0 ± 6.5 ms**). The floor (606 samples) is **2.37 s** at 256 Hz.
+- Per-subject values: `multisubject_chbmit.csv`; figure `fig_realdata_seam.png` (`exp_realdata.py`).
+
+**Sleep-EDF Expanded** (sleep, Fpz-Cz/Pz-Oz, 100 Hz; `exp_sleepedf.py`):
+- **R1 confirmed:** overlap-add reduction **23.4 ± 2.0 dB** (mean ± SD across **8** subjects).
+- **R3 confirmed:** fallback shift **1001 ± 2 ms** vs theory `(taps−1)/2/fs` (|measured − theory| =
+  **3.8 ± 2.2 ms**). The same 606-sample floor is **6.06 s** at 100 Hz — making the
+  `fs`-dependence explicit (longer floor and ~1 s mis-timing at the lower rate).
+- Per-subject values: `sleepedf_subjects.csv`.
 
 ## Exploratory (not featured in the paper) — montage hygiene
 `exp_channels_features.py` / `exp_realdata_features.py` show that including a non-EEG channel in
@@ -98,6 +104,7 @@ python3 run_boundary_experiment.py   # Results 1–2 (overlap-add + zero-phase f
 python3 exp_filter_fidelity.py       # Result 3 (magnitude + event timing)
 python3 exp_regime.py                # Result 4 (FIR-order sweep, transition, seed robustness)
 python3 exp_bandpower_equiv.py       # Result 5 (cascaded-tapering pitfall; welch + multitaper)
-python3 exp_multisubject.py          # Result 6 (multi-subject CHB-MIT; downloads EDFs to data/)
+python3 exp_multisubject.py          # Result 6a (multi-subject CHB-MIT; downloads EDFs to data/)
+python3 exp_sleepedf.py              # Result 6b (second dataset: Sleep-EDF, 100 Hz)
 python3 exp_realdata.py              # representative CHB-MIT seam figure (needs chb01_01.edf)
 ```

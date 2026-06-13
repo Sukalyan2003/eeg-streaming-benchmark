@@ -27,17 +27,18 @@ Browser- and cloud-based clinical EEG review increasingly filters and re-referen
 demand, one short window at a time, rather than on whole recordings. We show that this windowed,
 real-time setting introduces correctness failures that whole-signal offline practice does not
 anticipate, and we derive deterministic criteria that prevent them. Using a standard-library
-reference implementation evaluated against synthetic ground truth and multiple open clinical
-recordings (PhysioNet CHB-MIT), we establish three results. First, filtering display windows
+reference implementation evaluated against synthetic ground truth and two open clinical datasets
+at different sampling rates (PhysioNet CHB-MIT, 256\,Hz; Sleep-EDF, 100\,Hz), we establish three
+results. First, filtering display windows
 independently produces chunk-seam artifacts; an overlap-add scheme that filters an extended
-window and keeps the clean center removes them by about 35\,dB on synthetic data and more on real
-EEG, at negligible latency. Second, zero-phase forward--backward filtering (\texttt{filtfilt})
+window and keeps the clean center removes them by about 35\,dB on synthetic data and 23--51\,dB
+across two real datasets, at negligible latency. Second, zero-phase forward--backward filtering (\texttt{filtfilt})
 has a length floor of three filter lengths; a window shorter than the floor cannot be filtered
 zero-phase, so a streaming filter must fall back to a causal path whose uncompensated group delay
 displaces events by up to about 500\,ms---a clinically meaningful, regime-dependent error. We
 show the floor and the shift scale as $3(\mathrm{order}+1)$ and $(\mathrm{taps}-1)/2/f_s$ across
 FIR orders, distill the design rule $\mathrm{chunk}+2\!\cdot\!\mathrm{overlap}\ge 3\!\cdot\!
-\mathrm{taps}$, and confirm both on multiple CHB-MIT subjects. Third, in windowed spectral
+\mathrm{taps}$, and confirm both across both datasets. Third, in windowed spectral
 estimation, tapering the analysis window before an estimator that already tapers biases relative
 band power by up to about 12 percentage points for Welch and 9 for multitaper; tapering once
 removes it. The contribution is a small, reproducible set of correctness invariants for streaming
@@ -50,8 +51,10 @@ spectral estimation, reproducibility.
 \end{IEEEkeywords}
 
 \section{Introduction}
-Clinical electroencephalography (EEG) is increasingly reviewed through networked, on-demand
-viewers that fetch and process short windows of a recording rather than loading entire studies.
+Clinical electroencephalography (EEG) is increasingly reviewed through networked, browser- and
+cloud-based viewers~\cite{weiler2023robin,currey2023epviz} that fetch and process short windows of
+a recording rather than loading entire studies; clinicians page through the trace one short epoch
+at a time, so only the visible window need be fetched, filtered, and re-referenced.
 This shift moves standard digital-signal-processing (DSP) operations---bandpass and notch
 filtering and quantitative-EEG (QEEG) feature extraction---from a whole-signal, offline setting
 into a windowed, real-time setting. Operations that are textbook-correct offline can become
@@ -72,7 +75,7 @@ built only on standard libraries, with released code and data fetched at run tim
 a streaming filter falls back to a causal path, producing a measured event mis-timing of up to
 $\sim$500\,ms; we give a deterministic guard and generalize it across FIR order.
 \item A quantification of overlap-add windowed filtering ($\sim$35\,dB seam-artifact reduction at
-negligible latency), confirmed on multiple real CHB-MIT subjects.
+negligible latency), confirmed on two real datasets at different sampling rates.
 \item A cascaded-tapering result for windowed PSD estimation: tapering twice biases relative band
 power for both Welch and multitaper, with a one-line remedy.
 \end{enumerate}
@@ -132,19 +135,14 @@ estimator under test to \texttt{mne} (\texttt{psd\_array\_welch}/\texttt{psd\_ar
 by Pearson correlation and maximum per-band discrepancy in percentage points (pp).
 
 \subsection{Real data and reproducibility}
-We confirm the filtering results on PhysioNet CHB-MIT~\cite{shoeb2009,goldberger2000} (256\,Hz,
-bipolar montage), using the first recording of each of \textbf{10} subjects. Experiments ran
-in a fixed environment (Python 3.12; NumPy 2.4.1; SciPy 1.17.0; MNE 1.11.0). The reference
+We confirm the filtering results on two open datasets with different populations, montages, and
+sampling rates: PhysioNet CHB-MIT~\cite{shoeb2009,goldberger2000} (pediatric epilepsy, bipolar,
+256\,Hz; first recording of each of 10 subjects) and Sleep-EDF Expanded~\cite{kemp2000sleepedf,
+goldberger2000} (sleep, Fpz-Cz/Pz-Oz, 100\,Hz; \textbf{8} subjects). The two sampling rates
+make the floor's $f_s$-dependence explicit. Experiments ran in a fixed environment (Python 3.12;
+NumPy 2.4.1; SciPy 1.17.0; MNE 1.11.0). The reference
 implementation, synthetic generators, metrics, and figure scripts are released; raw EDFs are
 fetched from PhysioNet at run time and are not redistributed.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.78\textwidth]{fig_summary.png}
-\caption{Boundary RMSE by display-window size (left) and per-window filtering latency (right):
-overlap-add removes the seam error across window sizes at near-identical latency.}
-\label{fig:summary}
-\end{figure*}
 
 \section{Results}
 \subsection{R1: Overlap-add eliminates window-seam artifacts}
@@ -161,6 +159,14 @@ effectively free.
 the whole-signal ground truth at the seam; overlap-add (0.5\,s context) tracks it.}
 \label{fig:seam}
 \end{figure}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.78\textwidth]{fig_summary.png}
+\caption{Boundary RMSE by display-window size (left) and per-window filtering latency (right):
+overlap-add removes the seam error across window sizes at near-identical latency.}
+\label{fig:summary}
+\end{figure*}
 
 \subsection{R2: A zero-phase length floor and a design criterion}
 The bandpass is zero-phase via \texttt{filtfilt} only when the window exceeds
@@ -268,17 +274,24 @@ Multitaper, DPSS tapers only                & 0.0  \\
 \end{tabular}
 \end{table}
 
-\subsection{R6: Multi-subject real-data confirmation (CHB-MIT)}
+\subsection{R6: Multi-subject, two-dataset real-data confirmation}
 On the first recording of \textbf{10} CHB-MIT subjects (256\,Hz), overlap-add reduces seam
 boundary RMSE by \textbf{$50.6\pm2.2$}\,dB---comparable to or larger than synthetic---with near-zero
 interior error confirming zero-phase behavior (Fig.~\ref{fig:real}). The floor is 606 samples,
 i.e.\ 2.37\,s at 256\,Hz; because it is fixed in samples its duration scales with $f_s$. The
 fallback shift, measured by cross-correlation against the zero-phase output, is
 \textbf{$389\pm7$}\,ms, matching the predicted $(\mathrm{taps}-1)/2/f_s$
-(|measured$-$theory| $=$ \textbf{$4.0\pm6.5$}\,ms); the mis-timing is thus sampling-rate-dependent
-($\sim$393\,ms at 256\,Hz vs.\ $\sim$500\,ms at 200\,Hz). Per-subject values are consistent
+(|measured$-$theory| $=$ \textbf{$4.0\pm6.5$}\,ms). Per-subject values are consistent
 (Table~\ref{tab:ms}): the overlap-add reduction is 47--55\,dB across subjects and the fallback
 shift clusters tightly around the predicted group delay.
+
+The results are not specific to one dataset or sampling rate. On \textbf{8} Sleep-EDF
+subjects (100\,Hz, a different population and montage), overlap-add reduces seam boundary RMSE by
+\textbf{$23.4\pm2.0$}\,dB and the fallback shift is \textbf{$1001\pm2$}\,ms, again matching the
+predicted group delay (|measured$-$theory| $=$ \textbf{$3.8\pm2.2$}\,ms). The $f_s$-dependence is
+explicit: the same 606-sample floor is \textbf{6.06}\,s at 100\,Hz (vs.\ 2.37\,s at
+256\,Hz), and the fallback mis-times events by $\sim$1\,s rather than $\sim$0.4\,s---the lower the
+sampling rate, the longer both the floor and the mis-timing.
 
 \begin{figure}[t]
 \centering
