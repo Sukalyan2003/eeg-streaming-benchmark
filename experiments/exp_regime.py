@@ -3,10 +3,10 @@ Regime generalization: FIR-order sweep, the chunk-length transition, and seed ro
 
 Generalizes Results 1-3 beyond the single order-200 / single-seed configuration:
 
-  #1 FIR-order sweep — the zero-phase length floor is 3 x (order+1) taps; verify the floor and
+  #1 FIR-order sweep — the zero-phase pad length is 3 x taps; verify the pad length and
      the minimum overlap to stay zero-phase scale with FIR order.
   #3 Transition curve — sweep total filtered length L = chunk + 2*overlap through the floor and
-     show the abrupt jump in boundary error and event-timing shift at L = 3 x taps.
+     show the abrupt jump in boundary error and event-timing shift at L > 3 x taps.
   #2 Seed robustness — repeat the overlap-add boundary result across seeds; report mean +/- SD.
 
 Outputs under results/: regime_order_sweep.csv, regime_transition.csv,
@@ -23,13 +23,14 @@ import matplotlib.pyplot as plt
 from synth import generate
 from windowing import filter_whole, filter_naive, filter_overlap, seam_indices
 from dsp import bandpass_coefficients, apply_bandpass
+from safe_window import filtfilt_min_valid_samples, filtfilt_padlen_samples, plan_window
 
 RESULTS = Path(__file__).parent / "results"
 RESULTS.mkdir(exist_ok=True)
 FS = 200
 BP = (0.5, 30.0)
 NOTCH = 50.0
-ORDERS = [100, 200, 300, 400]
+ORDERS = [50, 100, 150, 200, 250, 300, 400, 500]
 
 
 def rms(a): return float(np.sqrt(np.mean(np.square(a))))
@@ -51,11 +52,15 @@ def order_sweep():
     rows = []
     for order in ORDERS:
         (taps,) = bandpass_coefficients(float(FS), BP[0], BP[1], order)
-        floor = 3 * len(taps)
+        padlen = filtfilt_padlen_samples(len(taps))
+        min_valid = filtfilt_min_valid_samples(len(taps))
         shift, ntaps = event_shift_ms(order)
-        rows.append(dict(order=order, n_taps=ntaps, floor_samples=floor,
-                         floor_s_at_200=round(floor / 200, 3), floor_s_at_256=round(floor / 256, 3),
-                         min_overlap_s_1s_window_200=round(max(0, (floor / 200 - 1.0) / 2), 3),
+        one_s_plan = plan_window(FS, 1.0, 0.0, order)
+        rows.append(dict(order=order, n_taps=ntaps, padlen_samples=padlen,
+                         min_valid_samples=min_valid,
+                         padlen_s_at_200=round(padlen / 200, 3),
+                         padlen_s_at_256=round(padlen / 256, 3),
+                         min_overlap_s_1s_window_200=round(one_s_plan.safe_overlap_s, 3),
                          fallback_shift_ms=round(shift, 1),
                          theo_shift_ms=round((ntaps - 1) / 2 / FS * 1e3, 1)))
     with open(RESULTS / "regime_order_sweep.csv", "w", newline="") as f:
@@ -70,7 +75,7 @@ def transition(order=200, seed=0):
     fs, sig = generate(120.0, FS, 1, mains_hz=NOTCH, seed=seed)
     x = sig[0]; n = x.size
     (taps,) = bandpass_coefficients(float(FS), BP[0], BP[1], order)
-    floor_s = 3 * len(taps) / FS
+    min_valid_s = filtfilt_min_valid_samples(len(taps)) / FS
     gt = filter_whole(x, fs, BP, NOTCH, order=order)
     win_s = 1.0
     seams = seam_indices(n, fs, win_s)
@@ -82,17 +87,18 @@ def transition(order=200, seed=0):
         sh = int(0.05 * fs); m = np.zeros(n, bool)
         for s in seams:
             m[max(0, s - sh):min(n, s + sh)] = True
+        total_samples = int(round(total_s * FS))
         rows.append(dict(total_len_s=round(total_s, 2), overlap_s=round(ov, 3),
-                         filtfilt_active=int(total_s >= floor_s),
+                         filtfilt_active=int(total_samples >= filtfilt_min_valid_samples(len(taps))),
                          boundary_rmse=round(rms((y - gt)[m]), 4)))
     with open(RESULTS / "regime_transition.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys())); w.writeheader()
         for r in rows:
             w.writerow(r)
-    return rows, floor_s
+    return rows, min_valid_s
 
 
-def seed_robustness(order=200, n_seeds=12, win_s=8.0):
+def seed_robustness(order=200, n_seeds=24, win_s=8.0):
     nb_list, ob_list = [], []
     for seed in range(n_seeds):
         fs, sig = generate(120.0, FS, 1, mains_hz=NOTCH, seed=seed)
@@ -111,18 +117,19 @@ def seed_robustness(order=200, n_seeds=12, win_s=8.0):
 
 def main():
     osweep = order_sweep()
-    trows, floor_s = transition()
+    trows, min_valid_s = transition()
     nb, ob, db = seed_robustness()
 
-    lines = ["#1 FIR-order sweep (zero-phase length floor = 3 x (order+1) taps):"]
+    lines = ["#1 FIR-order sweep (zero-phase padlen = 3 x taps; min valid = padlen + 1):"]
     for r in osweep:
-        lines.append(f"  order {r['order']:>3}: {r['n_taps']} taps, floor {r['floor_samples']} "
-                     f"samples = {r['floor_s_at_200']}s@200Hz / {r['floor_s_at_256']}s@256Hz; "
+        lines.append(f"  order {r['order']:>3}: {r['n_taps']} taps, padlen {r['padlen_samples']} "
+                     f"samples = {r['padlen_s_at_200']}s@200Hz / {r['padlen_s_at_256']}s@256Hz; "
+                     f"min valid {r['min_valid_samples']} samples; "
                      f"min overlap @1s window = {r['min_overlap_s_1s_window_200']}s; "
                      f"fallback shift {r['fallback_shift_ms']}ms (theory {r['theo_shift_ms']}ms).")
     lines += ["",
               f"#3 Transition: boundary error drops sharply as L=chunk+2*overlap crosses the "
-              f"floor ({floor_s:.2f}s). See regime_transition.csv / fig_transition.png.",
+              f"minimum valid zero-phase length ({min_valid_s:.2f}s). See regime_transition.csv / fig_transition.png.",
               "",
               f"#2 Seed robustness (n={len(nb)} seeds, 8s windows):",
               f"  naive boundary RMSE   = {nb.mean():.3f} +/- {nb.std():.3f} uV",
@@ -133,14 +140,14 @@ def main():
 
     # fig: floor vs order
     orders = [r["order"] for r in osweep]
-    floors = [r["floor_samples"] for r in osweep]
+    floors = [r["padlen_samples"] for r in osweep]
     plt.figure(figsize=(7, 4))
     plt.plot(orders, floors, "o-", color="tab:blue")
     for r in osweep:
-        plt.annotate(f"{r['fallback_shift_ms']:.0f} ms shift", (r["order"], r["floor_samples"]),
+        plt.annotate(f"{r['fallback_shift_ms']:.0f} ms shift", (r["order"], r["padlen_samples"]),
                      textcoords="offset points", xytext=(6, -12), fontsize=8)
-    plt.xlabel("FIR order"); plt.ylabel("zero-phase length floor (samples)")
-    plt.title("filtfilt floor = 3 × (order+1) scales with FIR order")
+    plt.xlabel("FIR order"); plt.ylabel("filtfilt pad length (samples)")
+    plt.title("filtfilt padlen = 3 × taps scales with FIR order")
     plt.tight_layout(); plt.savefig(RESULTS / "fig_order_floor.png", dpi=300); plt.close()
 
     # fig: transition
@@ -148,10 +155,11 @@ def main():
     be = [r["boundary_rmse"] for r in trows]
     plt.figure(figsize=(7, 4))
     plt.semilogy(L, be, "o-", color="tab:purple")
-    plt.axvline(floor_s, color="tab:red", ls="--", lw=1, label=f"filtfilt floor = {floor_s:.2f} s")
+    plt.axvline(min_valid_s, color="tab:red", ls="--", lw=1,
+                label=f"shortest valid zero-phase length = {min_valid_s:.2f} s")
     plt.xlabel("total filtered length  chunk + 2·overlap  (s)")
     plt.ylabel("boundary RMSE vs ground truth (µV, log)")
-    plt.title("Boundary error collapses once the zero-phase floor is reached")
+    plt.title("Boundary error collapses once the zero-phase length is reached")
     plt.legend(fontsize=8); plt.tight_layout()
     plt.savefig(RESULTS / "fig_transition.png", dpi=300); plt.close()
     print(f"\nWrote regime_order_sweep.csv, regime_transition.csv, regime_summary.txt, "

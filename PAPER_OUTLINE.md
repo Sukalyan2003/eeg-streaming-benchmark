@@ -1,9 +1,9 @@
 # Option 2 — Paper Structure & Literature-Review Plan
 
 Target: IEEE SPMB, Paper track (original, ~4–6 pages, IEEE two-column, oral). Working title:
-*Correctness Criteria for Windowed Real-Time EEG Signal Processing: Phase, Windowing, and
-Spectral Estimation.* The authoritative artifact is `paper.tex`; this file records the structure
-and the literature-review plan.
+*A Correctness and Runtime Benchmark for Windowed Real-Time EEG Signal Processing: Phase,
+Windowing, and Spectral Estimation.* The authoritative artifact is `paper.tex`; this file records
+the structure and the literature-review plan.
 
 > Citations are verified against IEEE Xplore / PubMed / publisher / dataset pages before
 > inclusion (see `references.bib`). Do not cite anything unverified.
@@ -14,11 +14,12 @@ and the literature-review plan.
 
 **Abstract (~200 words).** Web/clinical EEG viewers filter signals window-by-window. Using a
 standard-library reference chain against synthetic ground truth and multiple open clinical
-recordings, we establish three correctness criteria: (i) windowed filtering needs overlap-add to
+recordings, we establish a correctness-and-runtime benchmark: (i) windowed filtering needs overlap-add to
 avoid seam artifacts (~35 dB at negligible cost); (ii) zero-phase `filtfilt` has a length floor
 (3×taps), below which a streaming filter must use a causal path that shifts events by ~500 ms;
 (iii) a single taper is required in PSD estimation (cascaded tapering biases relative band power
-by up to ~12 pp). Deterministic criteria, validated across FIR order and multiple subjects.
+by up to ~12 pp); (iv) a safe-window scheduler enforces the guard automatically while EDF-duration
+benchmarks show it remains far faster than real time.
 
 **I. Introduction (~0.75 p).** Streaming/web EEG review; the thesis that "standard" DSP becomes
 subtly wrong under windowing; contributions list.
@@ -35,41 +36,58 @@ estimation. End each with the gap we fill.
 - C. Windowing strategies: whole-signal (reference), naive per-window, overlap-add.
 - D. Metrics: boundary/interior RMSE; magnitude response; event temporal shift; relative
   band-power agreement (vs MNE; Pearson r + max pp discrepancy).
-- E. Reproducibility: fixed environment + seeds, multi-subject CHB-MIT, released code.
+- E. Safe-window scheduler (`safe_window.py`): compute minimum overlap from `fs`, chunk, overlap,
+  and taps; expose unsafe edge-window status and fallback group delay.
+- F. EDF-duration runtime benchmark (`benchmark_edf_lengths.py`): load/filter/feature time,
+  memory footprint, real-time factor, and seconds per EEG-hour.
+- G. Reproducibility: fixed environment + seeds, multi-subject CHB-MIT, released code.
 
 **IV. Results (~1.5 p)** — one subsection per result, each with a figure/table:
 - R1 Overlap-add removes seam artifacts (`fig_seam`, `fig_profile`, `fig_summary`).
-- R2 The `filtfilt` length floor and the design criterion `chunk + 2·overlap ≥ 3·taps`.
+- R2 The `filtfilt` length floor and the design criterion `(chunk + 2·overlap)·fs > 3·taps`.
 - R3 Magnitude fidelity + the ~500 ms event mis-timing on the causal fallback (`fig_magnitude`,
   `fig_transient_shift`).
-- R4 Generalization: FIR-order sweep (floor = 3·(order+1)), transition curve, seed robustness
+- R4 Generalization: FIR-order sweep (padlen = 3·taps; min valid = 3·taps + 1), transition curve, seed robustness
   with mean ± SD (`fig_order_floor`, `fig_transition`).
 - R5 Cascaded-tapering pitfall vs MNE (Welch **and** multitaper).
-- R6 Multi-subject real-data confirmation of R1/R3 on CHB-MIT (`fig_realdata_seam`).
+- R6 Multi-subject real-data confirmation of R1/R3 on CHB-MIT and Sleep-EDF (`fig_realdata_seam`).
+- R7 Safe-window scheduler + EDF throughput benchmark (`fig_edf_length_benchmark`, +order/channel).
+- R8 Directly measured per-window latency vs a 60 Hz refresh (`fig_latency_benchmark`).
+- R9 Record-edge boundary policies: prefetch / reflection (`fig_edge_policy`).
 
-**V. Discussion (~0.5 p).** Deterministic design criteria (`chunk + 2·overlap ≥ 3·taps`; taper
-once); clinical impact (event timing); generality (properties of `filtfilt`, FIR group delay,
-Welch/multitaper tapering); threats to validity (R1–R4 are deterministic code properties; R5
-follows from cascaded-tapering algebra; confirmed on real data in R6).
+**V. Discussion (~0.5 p).** Deterministic design criteria (`(chunk + 2·overlap)·fs > 3·taps`;
+taper once); clinical impact (event timing); deployability (scheduler and EDF-duration benchmark);
+generality (properties of `filtfilt`, FIR group delay, Welch/multitaper tapering); threats to
+validity (R1–R4 are deterministic code properties; R5 follows from cascaded-tapering algebra;
+R7–R9 are single-machine runtime measurements with machine-independent orderings/scalings; all
+filtering results confirmed on real data in R6).
 
 **VI. Conclusion + future work (~0.25 p).** A small set of correctness invariants for streaming
-clinical EEG DSP; pointers to larger cohorts and to montage/feature-level correctness.
+clinical EEG DSP; pointers to larger cohorts, target-hardware benchmarking, and montage/feature-level correctness.
 
 **Figures/Tables:** Fig.1 seam waveform (`fig_seam`); Fig.2 seam error profile (`fig_profile`);
 Fig.3 boundary-RMSE + latency vs window (`fig_summary`, double-column); Fig.4 magnitude response
 (`fig_magnitude`); Fig.5 transient shift (`fig_transient_shift`); Fig.6 order floor
 (`fig_order_floor`); Fig.7 transition curve (`fig_transition`); Fig.8 real-EEG seam
-(`fig_realdata_seam`). Table I cascaded-tapering discrepancy (Welch & multitaper, with/without
-double taper); Table II FIR-order sweep (floor and shift vs order). Headline numbers carry
-mean ± SD (12 seeds; multiple CHB-MIT subjects).
+(`fig_realdata_seam`); Fig.9 EDF-duration benchmark, two-panel/two-dataset
+(`fig_edf_length_benchmark`); Fig.10 processing time vs FIR order (`fig_edf_order_scaling`);
+Fig.11 processing time vs channel count (`fig_edf_channel_scaling`); Fig.12 directly measured
+per-window latency vs 60 Hz refresh (`fig_latency_benchmark`); Fig.13 edge-window boundary policies
+(`fig_edge_policy`). Table I cascaded-tapering discrepancy (Welch & multitaper, with/without double
+taper); Table II FIR-order sweep (8 orders, floor and shift vs order); Table III per-subject
+CHB-MIT; Table IV 600 s throughput (four methods × two datasets). Results R1–R9: R7 throughput,
+R8 directly measured per-window latency (within a 60 Hz refresh), R9 record-edge boundary policies
+(prefetch / reflection). Headline numbers carry mean ± SD (24 seeds; 10 CHB-MIT + 8 Sleep-EDF
+subjects; 18-recording runtime benchmark, timed without memory instrumentation).
 
 ## 2. Contributions (explicit, for the intro)
-1. A reproducible, standard-library methodology that turns a windowed DSP chain into a
-   correctness benchmark.
+1. A reproducible, standard-library methodology that turns a windowed EDF DSP chain into a
+   correctness and runtime benchmark.
 2. The `filtfilt` length-floor result with a measured ~500 ms event mis-timing and a deterministic
-   guard, generalized across FIR order.
+   safe-window scheduler, generalized across FIR order.
 3. Quantified overlap-add benefit (~35 dB at negligible cost), confirmed on multiple subjects.
 4. A cascaded-tapering spectral-estimation result with a one-line remedy.
+5. End-to-end EDF-duration processing benchmarks showing the guardrail remains deployable.
 
 ## 3. Literature-review plan (by theme)
 

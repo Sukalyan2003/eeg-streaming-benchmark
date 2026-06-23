@@ -1,12 +1,16 @@
-#1 FIR-order sweep (zero-phase length floor = 3 x (order+1) taps):
-  order 100: 102 taps, floor 306 samples = 1.53s@200Hz / 1.195s@256Hz; min overlap @1s window = 0.265s; fallback shift 255.0ms (theory 252.5ms).
-  order 200: 202 taps, floor 606 samples = 3.03s@200Hz / 2.367s@256Hz; min overlap @1s window = 1.015s; fallback shift 505.0ms (theory 502.5ms).
-  order 300: 302 taps, floor 906 samples = 4.53s@200Hz / 3.539s@256Hz; min overlap @1s window = 1.765s; fallback shift 755.0ms (theory 752.5ms).
-  order 400: 402 taps, floor 1206 samples = 6.03s@200Hz / 4.711s@256Hz; min overlap @1s window = 2.515s; fallback shift 1005.0ms (theory 1002.5ms).
+#1 FIR-order sweep (zero-phase padlen = 3 x taps; min valid = padlen + 1):
+  order  50: 52 taps, padlen 156 samples = 0.78s@200Hz / 0.609s@256Hz; min valid 157 samples; min overlap @1s window = 0.0s; fallback shift 130.0ms (theory 127.5ms).
+  order 100: 102 taps, padlen 306 samples = 1.53s@200Hz / 1.195s@256Hz; min valid 307 samples; min overlap @1s window = 0.27s; fallback shift 255.0ms (theory 252.5ms).
+  order 150: 152 taps, padlen 456 samples = 2.28s@200Hz / 1.781s@256Hz; min valid 457 samples; min overlap @1s window = 0.645s; fallback shift 380.0ms (theory 377.5ms).
+  order 200: 202 taps, padlen 606 samples = 3.03s@200Hz / 2.367s@256Hz; min valid 607 samples; min overlap @1s window = 1.02s; fallback shift 505.0ms (theory 502.5ms).
+  order 250: 252 taps, padlen 756 samples = 3.78s@200Hz / 2.953s@256Hz; min valid 757 samples; min overlap @1s window = 1.395s; fallback shift 630.0ms (theory 627.5ms).
+  order 300: 302 taps, padlen 906 samples = 4.53s@200Hz / 3.539s@256Hz; min valid 907 samples; min overlap @1s window = 1.77s; fallback shift 755.0ms (theory 752.5ms).
+  order 400: 402 taps, padlen 1206 samples = 6.03s@200Hz / 4.711s@256Hz; min valid 1207 samples; min overlap @1s window = 2.52s; fallback shift 1005.0ms (theory 1002.5ms).
+  order 500: 502 taps, padlen 1506 samples = 7.53s@200Hz / 5.883s@256Hz; min valid 1507 samples; min overlap @1s window = 3.27s; fallback shift 1255.0ms (theory 1252.5ms).
 
-#3 Transition: boundary error drops sharply as L=chunk+2*overlap crosses the floor (3.03s). See regime_transition.csv / fig_transition.png.
+#3 Transition: boundary error drops sharply as L=chunk+2*overlap crosses the minimum valid zero-phase length (3.04s). See regime_transition.csv / fig_transition.png.
 
-#2 Seed robustness (n=12 seeds, 8s windows):
-  naive boundary RMSE   = 15.875 +/- 4.070 uV
-  overlap boundary RMSE = 0.2734 +/- 0.0352 uV
-  reduction             = 35.1 +/- 2.3 dB
+#2 Seed robustness (n=24 seeds, 8s windows):
+  naive boundary RMSE   = 14.445 +/- 3.908 uV
+  overlap boundary RMSE = 0.2707 +/- 0.0322 uV
+  reduction             = 34.3 +/- 2.4 dB

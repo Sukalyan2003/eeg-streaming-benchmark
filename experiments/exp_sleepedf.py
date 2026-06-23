@@ -4,9 +4,9 @@ Second-dataset confirmation of the windowed-filtering results on Sleep-EDF Expan
 Sleep-EDF is sampled at 100 Hz (vs CHB-MIT's 256 Hz) and is a different population (sleep, not
 epilepsy) with a different montage (Fpz-Cz / Pz-Oz). Confirming R1 (overlap-add seam-artifact
 reduction) and R3 (causal-fallback group-delay shift) here shows the results are not specific to
-one dataset, and makes the fs-dependence of the floor explicit: at 100 Hz the zero-phase floor is
-606 samples = 6.06 s and the fallback group delay is (taps-1)/2/fs ~ 1005 ms (vs 2.37 s / ~393 ms
-at 256 Hz).
+one dataset, and makes the fs-dependence of the floor explicit: at 100 Hz the zero-phase padlen is
+606 samples = 6.06 s, the shortest valid input is 607 samples, and the fallback group delay is
+(taps-1)/2/fs ~ 1005 ms (vs 2.37 s / ~393 ms at 256 Hz).
 
 For each subject's PSG recording this downloads the EDF to data/ if absent (kept; no redownload),
 then measures the overlap-add boundary-RMSE reduction at 8 s windows and the fallback shift by
@@ -169,7 +169,8 @@ def main():
         f"Second-dataset confirmation — Sleep-EDF Expanded (n={len(rows)} subjects, 100 Hz, "
         f"8 s windows):",
         "",
-        f"  zero-phase floor = {rows[0]['floor_samples']} samples = {floor_s} s at 100 Hz "
+        f"  zero-phase padlen = {rows[0]['floor_samples']} samples = {floor_s} s at 100 Hz; "
+        f"shortest valid input = {int(float(rows[0]['floor_samples'])) + 1} samples "
         f"(vs 2.37 s at 256 Hz).",
         f"  R1 overlap-add boundary-RMSE reduction = {db.mean():.1f} +/- {db.std():.1f} dB",
         f"  R3 fallback group-delay shift = {shift.mean():.0f} +/- {shift.std():.0f} ms "

@@ -1,9 +1,7 @@
-% IEEE SPMB conference paper (Paper track). Target length: 6 pages.
-% Compile: pdflatex paper && bibtex paper && pdflatex paper && pdflatex paper
-% Requires IEEEtran.cls (https://www.ctan.org/pkg/ieeetran) and references.bib.
-% Figures are under experiments/results/ (PNG, 300 DPI). The figure* environments (Figs. 1
-% and 4) are double-column and are the first knobs for fitting exactly 6 pages.
 \documentclass[conference]{IEEEtran}
+% Keep PDF metadata under author control: omit the build timestamp and randomized trailer id.
+\ifdefined\pdfinfoomitdate\pdfinfoomitdate=1\fi
+\ifdefined\pdftrailerid\pdftrailerid{}\fi
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{booktabs}
@@ -13,36 +11,33 @@
 
 \begin{document}
 
-\title{Correctness Criteria for Windowed Real-Time EEG Signal Processing:\\
+\title{A Correctness and Runtime Benchmark for Windowed Real-Time EEG Signal Processing:\\
 Phase, Windowing, and Spectral Estimation}
 
 \author{\IEEEauthorblockN{Sukalyan Roy}
 \IEEEauthorblockA{Avinya Neurotech\\
-Email: sukalyanroy2003@gmail.com}}
+Email: sukalyanroyofficial@gmail.com}}
 
 \maketitle
 
 \begin{abstract}
 Browser- and cloud-based clinical EEG review increasingly filters and re-references signals on
-demand, one short window at a time, rather than on whole recordings. We show that this windowed,
-real-time setting introduces correctness failures that whole-signal offline practice does not
-anticipate, and we derive deterministic criteria that prevent them. Using a standard-library
-reference implementation evaluated against synthetic ground truth and two open clinical datasets
-at different sampling rates (PhysioNet CHB-MIT, 256\,Hz; Sleep-EDF, 100\,Hz), we establish three
-results. First, filtering display windows
-independently produces chunk-seam artifacts; an overlap-add scheme that filters an extended
-window and keeps the clean center removes them by about 35\,dB on synthetic data and 23--51\,dB
-across two real datasets, at negligible latency. Second, zero-phase forward--backward filtering (\texttt{filtfilt})
-has a length floor of three filter lengths; a window shorter than the floor cannot be filtered
-zero-phase, so a streaming filter must fall back to a causal path whose uncompensated group delay
-displaces events by up to about 500\,ms---a clinically meaningful, regime-dependent error. We
-show the floor and the shift scale as $3(\mathrm{order}+1)$ and $(\mathrm{taps}-1)/2/f_s$ across
-FIR orders, distill the design rule $\mathrm{chunk}+2\!\cdot\!\mathrm{overlap}\ge 3\!\cdot\!
-\mathrm{taps}$, and confirm both across both datasets. Third, in windowed spectral
-estimation, tapering the analysis window before an estimator that already tapers biases relative
-band power by up to about 12 percentage points for Welch and 9 for multitaper; tapering once
-removes it. The contribution is a small, reproducible set of correctness invariants for streaming
-clinical EEG signal processing.
+demand, one short window at a time. We show that this setting introduces correctness failures that
+whole-signal offline practice does not anticipate, and derive deterministic criteria to prevent
+them using a standard-library reference implementation evaluated against synthetic ground truth
+and two open datasets (CHB-MIT, 256\,Hz; Sleep-EDF, 100\,Hz). First, filtering display windows
+independently produces chunk-seam artifacts; overlap-add filtering of an extended window removes
+them by about 35\,dB on synthetic data and 23--51\,dB on real data at negligible latency. Second,
+zero-phase filtering (\texttt{filtfilt}) has a length floor of three filter lengths; below it, our
+reference falls back to a causal path whose group delay displaces events by hundreds of
+milliseconds ($\sim$500\,ms at 200\,Hz, $\sim$0.4\,s at 256\,Hz, $\sim$1\,s at 100\,Hz). We
+distill the rule $(\mathrm{chunk}+2\!\cdot\!\mathrm{overlap})f_s > 3\!\cdot\!\mathrm{taps}$ and
+implement a sampling-rate-aware scheduler. Third, tapering before an estimator that already tapers
+biases relative band power by up to $\sim$12 percentage points for Welch and 9 for multitaper;
+taper once. Finally, an 18-recording benchmark shows scheduled overlap keeps filtering zero-phase
+with median per-window latency under 6\,ms, real-time factor far below one, and boundary policies
+for record edges. The result is a reproducible set of deployable correctness invariants for
+streaming clinical EEG DSP.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -55,54 +50,60 @@ Clinical electroencephalography (EEG) is increasingly reviewed through networked
 cloud-based viewers~\cite{weiler2023robin,currey2023epviz} that fetch and process short windows of
 a recording rather than loading entire studies; clinicians page through the trace one short epoch
 at a time, so only the visible window need be fetched, filtered, and re-referenced.
-This shift moves standard digital-signal-processing (DSP) operations---bandpass and notch
-filtering and quantitative-EEG (QEEG) feature extraction---from a whole-signal, offline setting
+This shift moves standard digital-signal-processing (DSP) operations, bandpass and notch
+filtering and quantitative-EEG (QEEG) feature extraction, from a whole-signal, offline setting
 into a windowed, real-time setting. Operations that are textbook-correct offline can become
 subtly and silently wrong under windowing: a filter that is zero-phase on a whole recording may
 not be on a short window, and an estimator that is unbiased on a clean buffer may be biased once
 a window is tapered upstream.
 
 This paper characterizes that gap and derives deterministic criteria to close it. Rather than
-propose a new algorithm, we take the standard streaming DSP chain---an FIR bandpass applied with
-\texttt{scipy.signal.filtfilt}, an IIR notch, and a Welch/multitaper power spectral density
-(PSD) routine---as the system under test, and quantify where windowing breaks correctness. We use
+propose a new algorithm, we take the standard streaming DSP chain as the system under test: an FIR
+bandpass applied with \texttt{scipy.signal.filtfilt}, an IIR notch, and a Welch/multitaper power
+spectral density (PSD) routine. We quantify where windowing breaks correctness. We use
 synthetic signals with known spectra for ground truth and open clinical recordings for external
-validity. We make four contributions:
+validity. We make five contributions:
 \begin{enumerate}
-\item A reproducible methodology that turns a windowed DSP chain into a correctness benchmark,
-built only on standard libraries, with released code and data fetched at run time.
+\item A reproducible methodology that turns a windowed EDF DSP chain into a correctness and
+runtime benchmark, built only on standard libraries, with released code and data fetched at run
+time.
 \item A zero-phase length-floor result: below a length threshold \texttt{filtfilt} cannot run, so
-a streaming filter falls back to a causal path, producing a measured event mis-timing of up to
-$\sim$500\,ms; we give a deterministic guard and generalize it across FIR order.
+a streaming filter must relax the filter or fall back to a causal path, producing a measured
+event mis-timing of hundreds of milliseconds ($\sim$500\,ms at 200\,Hz, $\sim$0.4\,s at 256\,Hz,
+$\sim$1\,s at 100\,Hz, rising further with FIR order); we give a deterministic guard and implement it as a
+safe-window scheduler.
 \item A quantification of overlap-add windowed filtering ($\sim$35\,dB seam-artifact reduction at
 negligible latency), confirmed on two real datasets at different sampling rates.
 \item A cascaded-tapering result for windowed PSD estimation: tapering twice biases relative band
 power for both Welch and multitaper, with a one-line remedy.
+\item An end-to-end EDF benchmark across 18 recordings at two sampling rates: sweeping segment
+duration, FIR order, and channel count for throughput, \emph{directly measuring} per-window
+latency against a display-refresh budget, and measuring boundary policies (prefetch /
+reflection) that make the scheduled guarantee hold at record edges, not only interior windows.
 \end{enumerate}
 
 \section{Background and Related Work}
-\textbf{Streaming and real-time EEG visualization.} Networked EEG viewers serve windowed segments
-to the client; the European Data Format (EDF/EDF+) is the de-facto storage
-format~\cite{kemp1992,kemp2003}. Prior work emphasizes interactivity and scale; the DSP
-correctness of windowed filtering and feature extraction in this setting is largely unexamined.
+\textbf{Streaming EEG visualization.} Networked viewers~\cite{weiler2023robin,currey2023epviz}
+serve windowed segments to the client over the EDF/EDF+ format~\cite{kemp1992,kemp2003}; prior work emphasizes interactivity and scale, but
+the DSP correctness of windowed filtering and feature extraction in this setting is largely
+unexamined.
 
-\textbf{EEG filtering and phase.} Bandpass and notch filtering are standard, and the risks of
-phase distortion and filter transients on event timing are documented for offline
-analysis~\cite{widmann2015,decheveigne2019}. Zero-phase (forward--backward) filtering removes
-phase distortion but is non-causal and requires sufficient data length~\cite{oppenheim2009}.
-These works warn about phase offline; none characterize the length-gated transition from a
-zero-phase to a causal regime inside a streaming filter, or its effect on event timing.
+\textbf{Filtering and phase.} Bandpass/notch filtering is standard, and phase-distortion and
+transient effects on event timing are documented for offline
+analysis~\cite{widmann2015,decheveigne2019}; zero-phase (forward--backward) filtering removes phase
+distortion but is non-causal and needs sufficient data length~\cite{oppenheim2009}. None
+characterize the length-gated zero-phase-to-causal transition inside a streaming filter, or its
+timing cost.
 
-\textbf{Block convolution and boundary artifacts.} Filtering long signals in blocks is classically
-handled by overlap-add/overlap-save~\cite{oppenheim2009,proakis2007}, with routines provided by
-standard libraries~\cite{virtanen2020}. The textbook methods are not characterized for clinical
-EEG streaming, nor parameterized against a zero-phase length floor.
+\textbf{Block convolution.} Block filtering is classically handled by
+overlap-add/overlap-save~\cite{oppenheim2009,proakis2007}, with standard-library
+routines~\cite{virtanen2020}, but is not characterized for clinical EEG streaming nor parameterized
+against a zero-phase length floor.
 
-\textbf{Spectral band power and QEEG.} Relative band power via Welch~\cite{welch1967} or
-multitaper~\cite{thomson1982} estimation is a common QEEG feature, with reference implementations
-in wide use~\cite{gramfort2013,virtanen2020}. Tapering is intrinsic to these estimators;
-implementation-level errors that taper a second time, and their bias on clinical relative band
-power, are under-reported.
+\textbf{Spectral band power.} Relative band power via Welch~\cite{welch1967} or
+multitaper~\cite{thomson1982} is a common QEEG feature with widely used
+implementations~\cite{gramfort2013,virtanen2020}. Tapering is intrinsic to these estimators;
+double-tapering errors and their bias on clinical relative band power are under-reported.
 
 \section{Methods}
 \subsection{Reference DSP primitives}
@@ -112,9 +113,13 @@ forward--backward zero-phase filtering (\texttt{scipy.signal.filtfilt}); an IIR 
 (\texttt{iirnotch}) applied with \texttt{filtfilt}; and a Welch/multitaper PSD routine
 (\texttt{scipy.signal.welch}, \texttt{mne}). A salient and standard detail is that
 \texttt{filtfilt} requires the input to exceed its default padding length,
-$3\!\cdot\!\mathrm{len(taps)}$ samples; a streaming filter that must return a shorter window
-therefore has to use a causal filter (\texttt{lfilter}) instead. The reference implementation
-(\texttt{dsp.py}) makes both regimes explicit.
+$3\!\cdot\!\mathrm{len(taps)}$ samples; for 202 taps this pad length is 606 samples, so the
+shortest valid input is 607 samples. A streaming filter that must return a shorter window must
+therefore either change the filter design (fewer taps, a shorter padding length, or an IIR
+alternative) or fall back to a causal filter; our reference implementation (\texttt{dsp.py}) takes
+the causal \texttt{lfilter} path and makes both regimes explicit. The trade-off is that the design
+changes alter the realized response, whereas the causal fallback preserves it but introduces group
+delay.
 
 \subsection{Synthetic ground truth}
 We generate deterministic, seeded multichannel signals at 200\,Hz with known spectral content:
@@ -134,6 +139,33 @@ For spectral estimation, \emph{feature equivalence} compares per-band relative p
 estimator under test to \texttt{mne} (\texttt{psd\_array\_welch}/\texttt{psd\_array\_multitaper})
 by Pearson correlation and maximum per-band discrepancy in percentage points (pp).
 
+\subsection{Safe-window scheduler and runtime benchmark}
+We implement the zero-phase guard as a scheduler (\texttt{safe\_window.py}). Given sampling rate
+$f_s$, requested chunk duration $c$, requested context $o$, and FIR tap count $T$, it computes the
+minimum context
+\begin{equation}
+o_{\min}=\frac{\max(0,\lceil(3T+1-cf_s)/2\rceil)}{f_s},
+\label{eq:scheduler}
+\end{equation}
+and uses $\max(o,o_{\min})$ so interior windows remain in the zero-phase regime. The scheduler
+also reports whether first/last record windows need an explicit boundary policy, and reports the
+fallback group delay that would be exposed if the guard is ignored.
+
+To connect correctness to deployability we run three measurements over all 18 local recordings of
+both datasets, aggregated as mean\,$\pm$\,SD across the files of each dataset. (i) A
+\emph{throughput} benchmark (\texttt{benchmark\_edf\_lengths.py}) loads the first $N$ seconds of an
+EDF, runs filtering and Welch relative-band-power extraction, and reports load/filter/feature
+time, array memory, and the real-time factor (processing time over segment duration), sweeping
+segment duration (30--600\,s), FIR order (100--400), and channel count (1--16) for the four paths
+(naive, fixed 0.5\,s overlap-add, scheduled-overlap, whole-signal). Timing runs without memory
+instrumentation, which would otherwise inflate wall time. (ii) A \emph{latency} benchmark
+(\texttt{benchmark\_latency.py}) instead filters one display window at a time and times each
+all-channel request independently, reporting the median/p95/max distribution against a 60\,Hz
+display-refresh budget, a direct measurement of per-window cost rather than an amortized one.
+(iii) A \emph{boundary-policy} experiment (\texttt{exp\_edge\_policy.py}) measures the edge-window
+error of the causal fallback, a reflection zero-phase policy, and real-context prefetching
+against the whole-signal zero-phase reference.
+
 \subsection{Real data and reproducibility}
 We confirm the filtering results on two open datasets with different populations, montages, and
 sampling rates: PhysioNet CHB-MIT~\cite{shoeb2009,goldberger2000} (pediatric epilepsy, bipolar,
@@ -148,9 +180,9 @@ fetched from PhysioNet at run time and are not redistributed.
 \subsection{R1: Overlap-add eliminates window-seam artifacts}
 With 8\,s windows, naive filtering concentrates error at seams (boundary RMSE 14.93\,$\mu$V) while
 leaving the interior near-exact; overlap-add with 0.5\,s context reduces boundary RMSE to
-0.275\,$\mu$V (34.7\,dB), and 1.0\,s renders it negligible (Figs.~\ref{fig:seam}--\ref{fig:summary}).
-The per-window overhead is within a few percent of naive filtering, so the correction is
-effectively free.
+0.275\,$\mu$V (34.7\,dB), and 1.0\,s renders it negligible (Fig.~\ref{fig:seam}). This holds across
+display-window sizes, and the per-window overhead is within a few percent of naive filtering, so
+the correction is effectively free.
 
 \begin{figure}[t]
 \centering
@@ -160,45 +192,30 @@ the whole-signal ground truth at the seam; overlap-add (0.5\,s context) tracks i
 \label{fig:seam}
 \end{figure}
 
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.78\textwidth]{fig_summary.png}
-\caption{Boundary RMSE by display-window size (left) and per-window filtering latency (right):
-overlap-add removes the seam error across window sizes at near-identical latency.}
-\label{fig:summary}
-\end{figure*}
-
 \subsection{R2: A zero-phase length floor and a design criterion}
 The bandpass is zero-phase via \texttt{filtfilt} only when the window exceeds
-$3\!\cdot\!\mathrm{taps} = 606$ samples (3.03\,s at 200\,Hz); a shorter window cannot be filtered
-zero-phase. A streaming filter processes a span of $\mathrm{chunk}+2\!\cdot\!\mathrm{overlap}$:
+$3\!\cdot\!\mathrm{taps} = 606$ samples; for this 202-tap filter the shortest valid input is
+607 samples (3.04\,s at 200\,Hz). A shorter window cannot be filtered zero-phase. A streaming
+filter processes a span of $\mathrm{chunk}+2\!\cdot\!\mathrm{overlap}$:
 large windows clear the floor and are zero-phase, but a small window (e.g.\ a 1\,s chunk with
-0.5\,s overlap spans $400 < 606$ samples) falls below it. On the causal fallback the error is
+0.5\,s overlap spans $400 < 607$ samples) falls below it. On the causal fallback the error is
 large \emph{throughout} the window (interior RMSE 30.7\,$\mu$V), not only at seams. The
 deterministic guard is to keep
 \begin{equation}
-(\mathrm{chunk}+2\!\cdot\!\mathrm{overlap})\,f_s \;\ge\; 3\!\cdot\!\mathrm{len(taps)},
+(\mathrm{chunk}+2\!\cdot\!\mathrm{overlap})\,f_s \;>\; 3\!\cdot\!\mathrm{len(taps)},
 \label{eq:criterion}
 \end{equation}
-i.e.\ at least 1.01\,s of overlap each side for a 1\,s chunk at 200\,Hz.
+i.e.\ at least 1.02\,s of overlap each side for a 1\,s chunk at 200\,Hz.
 
 \subsection{R3: Magnitude fidelity and event mis-timing}
 On the zero-phase path the magnitude response realizes the design: interior passband (1--25\,Hz)
 gain $-0.64\pm1.54$\,dB, with the 50\,Hz notch and 60\,Hz stopband below the $-120$\,dB
-measurement floor (Fig.~\ref{fig:mag}). The timing is regime-dependent: a 20\,ms transient is
+measurement floor. The timing is regime-dependent: a 20\,ms transient is
 unshifted (0\,ms) on the zero-phase path but is displaced by $+500$\,ms on the causal fallback,
 equal to the uncompensated linear-phase FIR group delay
 $(\mathrm{taps}-1)/2/f_s\approx502$\,ms (Fig.~\ref{fig:shift}). Combined with R2, whenever a
-window is short enough to force the fallback, displayed events---central to spike review and
-annotation alignment---are mis-timed by about half a second.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{fig_magnitude.png}
-\caption{Filter magnitude response (zero-phase path): the intended 0.5--30\,Hz passband and the
-50\,Hz notch are realized; measured gains match the designed $|H|^2$.}
-\label{fig:mag}
-\end{figure}
+window is short enough to force the fallback, displayed events, central to spike review and
+annotation alignment, are mis-timed by about half a second.
 
 \begin{figure}[t]
 \centering
@@ -209,36 +226,30 @@ short-window causal fallback shifts the event by $+500$\,ms.}
 \end{figure}
 
 \subsection{R4: Generalization across FIR order and robustness}
-The floor equals $3(\mathrm{order}+1)$ taps and the fallback shift equals
-$(\mathrm{taps}-1)/2/f_s$; both scale with FIR order (Table~\ref{tab:order}, Fig.~\ref{fig:order}).
+The pad length equals $3T$ for tap count $T$, the shortest valid zero-phase input is $3T+1$, and
+the fallback shift equals $(T-1)/2/f_s$; all scale with FIR order (Table~\ref{tab:order}).
 Sweeping the total filtered length through the floor shows boundary error collapse sharply at the
-threshold (Fig.~\ref{fig:transition}). Across 12 seeds the overlap-add reduction is
-$35.1\pm2.3$\,dB (naive $15.9\pm4.1\,\mu$V; overlap-add $0.273\pm0.035\,\mu$V), confirming
+threshold (Fig.~\ref{fig:transition}). Across 24 seeds the overlap-add reduction is
+$34.3\pm2.4$\,dB (naive $14.4\pm3.9\,\mu$V; overlap-add $0.271\pm0.032\,\mu$V), confirming
 robustness and generalizing criterion~\eqref{eq:criterion} to any FIR order.
 
 \begin{table}[t]
-\caption{Zero-phase floor and fallback shift scale with FIR order (200\,Hz).}
+\caption{Zero-phase pad length and fallback shift scale with FIR order (200\,Hz; representative
+rows from the eight-order sweep).}
 \label{tab:order}
 \centering
 \begin{tabular}{cccc}
 \toprule
-FIR order & taps & floor (samples / s) & fallback shift (ms) \\
+FIR order & taps & padlen (samples / s) & fallback shift (ms) \\
 \midrule
-100 & 102 & 306 / 1.53 & 255 \\
-200 & 202 & 606 / 3.03 & 505 \\
-300 & 302 & 906 / 4.53 & 755 \\
-400 & 402 & 1206 / 6.03 & 1005 \\
+50  & 52  & 156 / 0.78  & 130  \\
+100 & 102 & 306 / 1.53  & 255  \\
+200 & 202 & 606 / 3.03  & 505  \\
+300 & 302 & 906 / 4.53  & 755  \\
+500 & 502 & 1506 / 7.53 & 1255 \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{fig_order_floor.png}
-\caption{The zero-phase length floor $3(\mathrm{order}+1)$ and the annotated fallback group-delay
-shift both scale with FIR order.}
-\label{fig:order}
-\end{figure}
 
 \begin{figure}[t]
 \centering
@@ -276,9 +287,10 @@ Multitaper, DPSS tapers only                & 0.0  \\
 
 \subsection{R6: Multi-subject, two-dataset real-data confirmation}
 On the first recording of \textbf{10} CHB-MIT subjects (256\,Hz), overlap-add reduces seam
-boundary RMSE by \textbf{$50.6\pm2.2$}\,dB---comparable to or larger than synthetic---with near-zero
-interior error confirming zero-phase behavior (Fig.~\ref{fig:real}). The floor is 606 samples,
-i.e.\ 2.37\,s at 256\,Hz; because it is fixed in samples its duration scales with $f_s$. The
+boundary RMSE by \textbf{$50.6\pm2.2$}\,dB, comparable to or larger than synthetic, with near-zero
+interior error confirming zero-phase behavior (Fig.~\ref{fig:real}). The pad length is 606
+samples, so the shortest valid zero-phase span is 607 samples, i.e.\ 2.37\,s at 256\,Hz; because
+it is fixed in samples its duration scales with $f_s$. The
 fallback shift, measured by cross-correlation against the zero-phase output, is
 \textbf{$389\pm7$}\,ms, matching the predicted $(\mathrm{taps}-1)/2/f_s$
 (|measured$-$theory| $=$ \textbf{$4.0\pm6.5$}\,ms). Per-subject values are consistent
@@ -289,9 +301,9 @@ The results are not specific to one dataset or sampling rate. On \textbf{8} Slee
 subjects (100\,Hz, a different population and montage), overlap-add reduces seam boundary RMSE by
 \textbf{$23.4\pm2.0$}\,dB and the fallback shift is \textbf{$1001\pm2$}\,ms, again matching the
 predicted group delay (|measured$-$theory| $=$ \textbf{$3.8\pm2.2$}\,ms). The $f_s$-dependence is
-explicit: the same 606-sample floor is \textbf{6.06}\,s at 100\,Hz (vs.\ 2.37\,s at
-256\,Hz), and the fallback mis-times events by $\sim$1\,s rather than $\sim$0.4\,s---the lower the
-sampling rate, the longer both the floor and the mis-timing.
+explicit: the same 606-sample pad length is \textbf{6.06}\,s at 100\,Hz, so the shortest valid
+span is 6.07\,s (vs.\ 2.37\,s at 256\,Hz), and the fallback mis-times events by $\sim$1\,s rather
+than $\sim$0.4\,s: the lower the sampling rate, the longer both the floor and the mis-timing.
 
 \begin{figure}[t]
 \centering
@@ -326,12 +338,132 @@ mean\,$\pm$\,SD & $50.6\pm2.2$ & $389\pm7$ \\
 \end{tabular}
 \end{table}
 
+\subsection{R7: EDF runtime benchmark and the scheduled-overlap guard}
+The scheduler turns the criterion into a deployable configuration rather than a post-hoc warning.
+We benchmark all 18 local recordings, 10 CHB-MIT (256\,Hz, 8 channels) and 8 Sleep-EDF (100\,Hz,
+2 channels), over segment durations of 30--600\,s, reporting mean\,$\pm$\,SD across the files of
+each dataset (\texttt{edf\_length\_benchmark.csv}).
+
+\emph{The scheduler is sampling-rate aware.} With 1\,s chunks and requested 0.5\,s context, the
+configured interior span is below the 607-sample floor at both rates, so the scheduler raises
+context automatically: to 0.6875\,s per side at 256\,Hz (a 608-sample span), but to 2.54\,s per
+side at 100\,Hz, because the fixed 607-sample floor is a far larger fraction of a lower-rate
+stream. This is the runtime face of the $f_s$-dependence in R6. The guarantee is for
+\emph{interior} windows, which have real context on both sides; the first and last window of a
+record have one-sided context only (a 432-sample span at 256\,Hz, 354 at 100\,Hz, both below the
+floor), so record edges still require prefetching extra context or an explicit boundary policy.
+The scheduler reports this edge status rather than silently mixing regimes.
+
+\emph{Throughput.} Processing time scales linearly with duration (Fig.~\ref{fig:edfbench},
+Table~\ref{tab:edf}). On the longest (600\,s) CHB-MIT segments, scheduled overlap takes
+$3.05\pm0.06$\,s end-to-end (real-time factor $5.1\times10^{-3}$, i.e.\ 18\,s per EEG-hour); the
+unsafe fixed-overlap baseline is about $2.4\times$ faster ($1.25\pm0.02$\,s) but stays in the
+causal-fallback regime, and the offline whole-signal reference is fastest ($0.79\pm0.01$\,s).
+Every streaming path runs two-to-three orders of magnitude faster than real time; the guardrail's
+extra cost over the unsafe path is real but small in absolute terms. Peak array working memory
+stays modest ($\approx$20\,MB for a 600\,s 8-channel segment). Per-window interactivity is treated
+separately in R8.
+
+\emph{Order and channel scaling.} Because the scheduler grows context with the floor, the cost of
+correctness rises with FIR order: at 256\,Hz a 120\,s segment costs 0.37\,s at order 100 (0.5\,s
+context) but 1.89\,s at order 400 (1.86\,s context), while the whole-signal reference is flat at
+$\sim$0.17\,s (Fig.~\ref{fig:edfscale}, left); at 100\,Hz the order-400 scheduler needs 5.54\,s of
+context per side. Processing time is linear in channel count for every method
+(Fig.~\ref{fig:edfscale}, right). The benchmark is single-machine and should be repeated on target
+hardware before product latency claims, but the ordering of the methods and the linear scaling are
+machine-independent.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig_edf_length_benchmark.png}
+\caption{End-to-end processing time versus EDF duration (mean\,$\pm$\,SD across files) for the
+four paths, on CHB-MIT (256\,Hz, 8 channels; left) and Sleep-EDF (100\,Hz, 2 channels; right).
+Scheduled overlap keeps \emph{interior} windows in the zero-phase regime at a small, linear cost
+over the unsafe paths (record edges need a boundary policy; see text).}
+\label{fig:edfbench}
+\end{figure*}
+
+\begin{table}[t]
+\caption{Throughput at the longest (600\,s) segment, mean\,$\pm$\,SD across files. RTF: real-time
+factor ($\times10^{-3}$); int.\ safe: \emph{interior} windows stay in the zero-phase regime (record
+edges need a boundary policy, R9). Per-window latency is reported in R8.}
+\label{tab:edf}
+\centering
+\begin{tabular}{llccc}
+\toprule
+Dataset & Method & proc (s) & RTF ($\times10^{-3}$) & int.\ safe \\
+\midrule
+CHB-MIT   & naive             & $1.28\pm0.03$ & 2.1 & no  \\
+(256\,Hz) & fixed-overlap     & $1.25\pm0.02$ & 2.1 & no  \\
+8 ch      & scheduled-overlap & $3.05\pm0.06$ & 5.1 & yes \\
+          & whole-signal      & $0.79\pm0.01$ & 1.3 & yes \\
+\midrule
+Sleep-EDF & naive             & $0.31\pm0.01$ & 0.5 & no  \\
+(100\,Hz) & fixed-overlap     & $0.30\pm0.01$ & 0.5 & no  \\
+2 ch      & scheduled-overlap & $0.74\pm0.01$ & 1.2 & yes \\
+          & whole-signal      & $0.17\pm0.01$ & 0.3 & yes \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.49\columnwidth]{fig_edf_order_scaling.png}\hfill
+\includegraphics[width=0.49\columnwidth]{fig_edf_channel_scaling.png}
+\caption{Scheduled-overlap cost scaling (120\,s segments). Left: vs.\ FIR order, cost rises as the
+scheduler grows context to clear the larger floor, while the whole-signal reference is flat.
+Right: processing time is linear in channel count for all paths (CHB-MIT).}
+\label{fig:edfscale}
+\end{figure}
+
+\subsection{R8: Measured per-window latency}
+The benchmark above reports whole-segment throughput. Interactivity, however, is governed by the
+cost of a single window, so we measure it directly (\texttt{benchmark\_latency.py}): we filter the
+signal \emph{one display window at a time}, timing each window's all-channel request
+independently, and report the distribution rather than an amortized mean.
+On CHB-MIT (256\,Hz, 8 channels) the scheduled path costs a median 4.2\,ms to filter a 1\,s window
+and 5.7\,ms including per-window Welch band power, with a worst-case 95th percentile of 6.4\,ms; on
+Sleep-EDF (100\,Hz, 2 channels) the figures are 1.1 and 1.5\,ms. Every method, on both datasets,
+stays within a single 60\,Hz display refresh (16.7\,ms), so the scheduled guardrail is
+interactively imperceptible even at its p95. This directly measured latency agrees with the
+amortized estimate from R7, confirming the throughput figure was not hiding a per-window cost.
+
+\subsection{R9: Making the record edges operational}
+R7's guarantee is for interior windows; the first/last window of a record has one-sided context
+and would otherwise fall to the causal regime. We measure three boundary policies for the edge
+window against the whole-signal zero-phase reference (\texttt{exp\_edge\_policy.py},
+Fig.~\ref{fig:edge}). For a window in the interior of a recording (a view whose left edge is not
+the record start), \emph{prefetching} real neighbouring samples to clear the floor makes the edge
+window essentially exact: boundary RMSE $0.001\,\mu$V versus $56\,\mu$V for the unguarded causal
+fallback on CHB-MIT (a $94$\,dB reduction), and likewise on Sleep-EDF. At the \emph{true} record
+boundary, where no neighbouring samples exist, a reflection zero-phase policy avoids the causal
+fallback and reduces the edge error by $7$--$16$\,dB, but a residual boundary error remains
+(CHB-MIT $17.9\pm58.4\,\mu$V; Sleep-EDF $4.0\pm4.5\,\mu$V) because reflection only approximates the
+absent samples. The recommendation is therefore deterministic: prefetch real context when it
+exists (which makes interior-of-record edges exact), reflect-pad at true record boundaries to
+avoid the causal regime, and never silently take the causal path. The scheduled configuration is
+then operationally zero-phase at interior windows, with reduced (not eliminated) error at the two
+true record boundaries.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_edge_policy.png}
+\caption{Edge-window boundary RMSE versus the zero-phase reference for three policies, at the true
+record start and at an interior-of-record view edge (mean\,$\pm$\,SD across channels and files).
+Prefetch is exact where real context exists; reflection helps at true boundaries; the causal
+fallback is worst.}
+\label{fig:edge}
+\end{figure}
+
 \section{Discussion}
 The results reduce to a small set of correctness invariants for streaming clinical EEG DSP.
 (1)~\emph{Windowing:} always supply real context and retain only the center (overlap-add).
 (2)~\emph{Zero-phase length:} enforce criterion~\eqref{eq:criterion} so the filter never leaves
 the zero-phase regime, and make any fallback observable; otherwise event timing can be off by
-hundreds of milliseconds. (3)~\emph{Spectral estimation:} taper exactly once. These are
+hundreds of milliseconds. The safe-window scheduler implements this invariant by construction, the
+throughput and directly-measured latency benchmarks (R7, R8) show its cost is operationally small
+(per-window latency under one display refresh), and a boundary policy (R9) extends the guarantee to
+record edges. (3)~\emph{Spectral estimation:} taper exactly once. These are
 implementation invariants, not new algorithms, yet each is violated by a plausible windowed
 configuration, and each violation is silent in the sense that the output looks like a valid
 signal or spectrum.
@@ -339,19 +471,28 @@ signal or spectrum.
 \emph{Threats to validity.} R1--R4 rest on deterministic properties of the implementation (the
 \texttt{filtfilt} length floor; linear-phase FIR group delay) and hold independent of signal
 content; we nonetheless confirm them on multiple real recordings (R6). R5 follows from the
-algebra of cascaded tapering and is reproduced for two estimator families. We evaluate one
-reference implementation, but the invariants follow from properties of \texttt{filtfilt},
+algebra of cascaded tapering and is reproduced for two estimator families. R7--R9 are
+single-machine runtime measurements; the method ordering, linear scaling, and boundary-policy
+error reductions are machine-independent, but the absolute times should be repeated on the target
+deployment hardware before making product latency claims. We evaluate one reference
+implementation, but the invariants follow from properties of \texttt{filtfilt},
 linear-phase FIR group delay, and Welch/multitaper tapering common to widely used libraries, and
 are relevant to medical-device software life-cycle assurance~\cite{iec62304}.
 
 \section{Conclusion}
 Moving routine EEG DSP into a windowed, real-time setting introduces silent correctness failures
-that offline practice does not anticipate. By evaluating a standard-library reference chain
-against synthetic ground truth and multiple open clinical recordings, we identify and quantify
-three---seam artifacts, a zero-phase length-floor fallback with $\sim$500\,ms event mis-timing,
-and a cascaded-tapering spectral bias---and give deterministic, low-cost remedies expressible as
-short invariants. Future work extends the confirmation to larger cohorts and to montage and
-feature-level correctness.
+that offline practice does not anticipate. Evaluating a standard-library reference chain against
+synthetic ground truth and multiple open recordings, we quantify three (seam artifacts, a
+zero-phase length-floor fallback whose event mis-timing is $\sim$500\,ms at 200\,Hz and
+$\sim$0.4--1\,s on real data at 256 and 100\,Hz, and a cascaded-tapering spectral bias) and give deterministic,
+low-cost remedies, implemented as a safe-window scheduler and benchmarked across 18 recordings.
+Future work extends to larger cohorts, deployment hardware, and montage-level correctness.
+
+\section*{Acknowledgment}
+During the preparation of this work the author used Claude (Anthropic) to assist with drafting the
+manuscript, implementing experiment code, and generating figures. After using this tool, the author
+reviewed and edited the content as needed and takes full responsibility for the content of the
+publication.
 
 \section*{Reproducibility}
 The reference implementation, synthetic generators, metrics, and figure scripts are released; raw

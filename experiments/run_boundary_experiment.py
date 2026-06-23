@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 
 from synth import generate
 from windowing import filter_whole, filter_naive, filter_overlap, seam_indices
+from safe_window import fir_tap_count, filtfilt_min_valid_samples, filtfilt_padlen_samples
 
 RESULTS = Path(__file__).parent / "results"
 RESULTS.mkdir(exist_ok=True)
@@ -42,7 +43,9 @@ GUARD = int(round(0.6 * FS))       # interior excludes ±0.6 s around seams
 # FIR order 200 -> 202 taps; scipy filtfilt requires > 3*taps samples, otherwise a streaming
 # filter must fall back to a phase-distorting causal lfilter path for that window.
 ORDER = 200
-FILTFILT_MIN = 3 * (ORDER + 2)     # 606 samples = 3.03 s @ 200 Hz (202 taps)
+TAPS = fir_tap_count(ORDER)
+FILTFILT_PADLEN = filtfilt_padlen_samples(TAPS)       # 606 samples = 3.03 s @ 200 Hz
+FILTFILT_MIN = filtfilt_min_valid_samples(TAPS)       # shortest valid zero-phase input
 
 
 def rms(a):
@@ -127,9 +130,9 @@ def main():
         f"({nrow['ms_per_window']:.3f} -> {orow['ms_per_window']:.3f} ms/window).",
         "",
         "RESULT 2 (zero-phase length floor):",
-        f"  An order-{ORDER} FIR (202 taps) needs > {FILTFILT_MIN} samples "
-        f"({FILTFILT_MIN/FS:.2f} s) for zero-phase filtfilt; a shorter window must use a causal "
-        f"filter instead.",
+        f"  An order-{ORDER} FIR ({TAPS} taps) has filtfilt padlen={FILTFILT_PADLEN} samples; "
+        f"zero-phase filtering needs at least {FILTFILT_MIN} samples "
+        f"({FILTFILT_MIN/FS:.2f} s). Shorter windows must use a causal filter instead.",
         f"  A windowed filter processes a span of chunk + 2*overlap. Large windows clear the "
         f"floor and are zero-phase; small windows do not:",
         f"    e.g. chunk=1 s + overlap=0.5 s = {small['ext_samples']} samples (<{FILTFILT_MIN}) "
@@ -137,7 +140,7 @@ def main():
         f"{small['interior_rmse']:.2f} uV (distorted everywhere, not just seams).",
         f"  Design criterion to stay zero-phase: keep chunk + 2*overlap >= "
         f"{FILTFILT_MIN/FS:.2f} s (>= {(FILTFILT_MIN/FS - 1.0)/2:.2f} s overlap each side at a "
-        f"1 s chunk), i.e. (chunk + 2*overlap)*fs >= 3*taps.",
+        f"1 s chunk), i.e. (chunk + 2*overlap)*fs > 3*taps.",
     ]
     (RESULTS / "headline.txt").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))

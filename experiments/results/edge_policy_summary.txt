@@ -1,0 +1,22 @@
+Boundary-policy experiment — first/edge displayed window vs whole-signal zero-phase
+reference. FIR order 200, 1 s window. Boundary RMSE in uV (mean +/- SD across channels x files).
+
+=== chbmit ===
+  record_start:
+    causal           :   40.802 +/- 57.950 uV
+    reflect_zerophase:   17.867 +/- 58.413 uV  (7.2 dB vs causal)
+  interior:
+    causal           :   56.221 +/- 45.421 uV
+    reflect_zerophase:    3.966 +/-  4.278 uV  (23.0 dB vs causal)
+    prefetch         :    0.001 +/-  0.001 uV  (93.6 dB vs causal)
+
+=== sleepedf ===
+  record_start:
+    causal           :   25.851 +/- 27.666 uV
+    reflect_zerophase:    3.987 +/-  4.506 uV  (16.2 dB vs causal)
+  interior:
+    causal           :   22.238 +/- 17.182 uV
+    reflect_zerophase:    1.427 +/-  1.610 uV  (23.9 dB vs causal)
+    prefetch         :    0.001 +/-  0.001 uV  (88.6 dB vs causal)
+
+Takeaway: prefetch makes interior-of-record view edges essentially exact (real context); reflect_zerophase makes true record boundaries match offline practice (filtfilt also reflection-pads that boundary), both far below the causal fallback. Edges are therefore operationally safe with a boundary policy, not just interior-safe.

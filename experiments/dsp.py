@@ -10,9 +10,10 @@ so every experiment in this directory is reproducible without any external packa
 Two implementation facts drive the results in this study and are not specific to any product:
 
   1. ``scipy.signal.filtfilt`` requires the input to be longer than its default padding
-     length (``3 * max(len(a), len(b))``); for an order-N FIR that is ``3 * (N+1)`` samples.
-     Below that length filtfilt cannot run, so a streaming filter that must return *something*
-     for a short window has to fall back to a causal filter.
+     length (``3 * max(len(a), len(b))``). For an order-200 FIR in this implementation that
+     padding length is 606 samples, so the shortest valid zero-phase input is 607 samples.
+     At or below the padding length, filtfilt cannot run, so a streaming filter that must
+     return *something* for a short window has to fall back to a causal filter.
   2. A causal linear-phase FIR (``lfilter``) has an uncompensated group delay of
      ``(numtaps - 1) / 2`` samples; the zero-phase path has none. The two regimes therefore
      differ in event timing by hundreds of milliseconds.
@@ -63,16 +64,17 @@ def notch_coefficients(fs: float, notch_freq: float,
 def apply_bandpass(data, fs, lowcut, highcut, order: int = 200) -> np.ndarray:
     """Zero-phase FIR bandpass, with the causal fallback used when the window is too short.
 
-    Uses ``filtfilt`` when ``len(data) >= 3 * len(taps)`` (the zero-phase regime). For shorter
+    Uses ``filtfilt`` when ``len(data) > 3 * len(taps)`` (the zero-phase regime). For shorter
     inputs ``filtfilt`` cannot run, so the signal is reflect-padded and filtered causally with
     ``lfilter`` (the fallback regime), which leaves an uncompensated FIR group delay.
     """
     data = np.asarray(data, dtype=np.float64)
     (fir_coefs,) = bandpass_coefficients(float(fs), float(lowcut), float(highcut), int(order))
-    min_length = 3 * len(fir_coefs)
-    if len(data) < min_length:
-        padlen = min_length - len(data)
-        data_padded = np.pad(data, (padlen, padlen), mode="reflect")
+    filtfilt_padlen = 3 * len(fir_coefs)
+    if len(data) <= filtfilt_padlen:
+        padlen = max(1, filtfilt_padlen + 1 - len(data))
+        mode = "reflect" if len(data) > 1 else "edge"
+        data_padded = np.pad(data, (padlen, padlen), mode=mode)
         filtered_padded = signal.lfilter(fir_coefs, 1.0, data_padded)
         return filtered_padded[padlen:-padlen]
     return signal.filtfilt(fir_coefs, 1.0, data)

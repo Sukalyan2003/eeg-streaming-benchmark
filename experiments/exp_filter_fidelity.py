@@ -7,7 +7,7 @@ Two questions about the reference bandpass (`dsp.apply_bandpass`, FIR order 200)
   A. Magnitude fidelity — does the zero-phase (filtfilt) path realize the intended
      passband/stopband, and does the notch reject 50 Hz?
   B. Phase / temporal distortion — the filtfilt path is zero-phase (no time shift). When the
-     window is shorter than 3x(taps), filtfilt cannot run and a streaming filter must use a
+     window is not longer than 3x(taps), filtfilt cannot run and a streaming filter must use a
      causal `lfilter`, whose linear-phase FIR group delay (~(taps-1)/2 samples) is NOT
      compensated, shifting events in time. We measure the temporal shift of a sharp transient
      (a proxy for an epileptiform spike).
@@ -33,6 +33,7 @@ BP = (0.5, 30.0)
 NOTCH = 50.0
 (TAPS,) = bandpass_coefficients(float(FS), BP[0], BP[1], 200)
 FILTFILT_MIN = 3 * len(TAPS)
+FILTFILT_VALID_MIN = FILTFILT_MIN + 1
 
 
 def measure_magnitude():
@@ -70,8 +71,8 @@ def measure_transient_shift():
     # Zero-phase path: filter the whole (long) signal -> filtfilt
     y_zero = apply_bandpass(x, FS, BP[0], BP[1])
 
-    # Fallback path: filter a short window (< FILTFILT_MIN) around the spike -> lfilter
-    half = 250                                             # 500-sample window (< 606) forces fallback
+    # Fallback path: filter a short window (< FILTFILT_VALID_MIN) around the spike -> lfilter
+    half = 250                                             # 500-sample window (< 607) forces fallback
     c = int(t0 * FS)
     win = x[c - half:c + half]
     y_fb_win = apply_bandpass(win, FS, BP[0], BP[1])
@@ -108,7 +109,8 @@ def main():
     shift_fb_ms = (pt_fb - pt_in) * 1e3
 
     summary = [
-        f"Filter taps={len(TAPS)}, filtfilt floor={FILTFILT_MIN} samples ({FILTFILT_MIN/FS:.2f} s).",
+        f"Filter taps={len(TAPS)}, filtfilt padlen={FILTFILT_MIN} samples; "
+        f"shortest valid input={FILTFILT_VALID_MIN} samples ({FILTFILT_VALID_MIN/FS:.2f} s).",
         f"Passband (1-25 Hz) gain: {gdb[pb].mean():.2f} +/- {gdb[pb].std():.2f} dB "
         f"(ideal 0 dB for filtfilt).",
         f"50 Hz notch gain: {gdb[notch_idx]:.1f} dB (deep rejection expected).",

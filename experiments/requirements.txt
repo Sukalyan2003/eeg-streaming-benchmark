@@ -1,5 +1,6 @@
-# Plus the shared `domain` package (editable: cd domain && pip install -e .)
-numpy>=2.0
-scipy>=1.11
-matplotlib>=3.8
-mne>=1.10
+# Self-contained: standard scientific stack only (no `domain` / no product packages).
+# Pinned to the environment the reported results were produced on (Python 3.12).
+numpy==2.4.1
+scipy==1.17.0
+matplotlib==3.10.7
+mne==1.11.0

@@ -25,7 +25,8 @@ is the zero-phase filter actually zero-phase?
   ways: naive per-window versus overlap-add (filter an extended window, keep the center).
 - Synthetic signals with known spectra for ground truth, plus two real datasets for external
   validity: PhysioNet CHB-MIT (256 Hz) and Sleep-EDF (100 Hz).
-- Sweep window sizes; characterize the `filtfilt` length floor (`3 × taps`) and the causal-fallback
+- Sweep window sizes; characterize the `filtfilt` pad length (`3 × taps`), shortest valid
+  zero-phase input (`3 × taps + 1`), the safe-window scheduler, and the causal-fallback
   group-delay shift across FIR orders.
 
 ## 3. Metrics
@@ -38,9 +39,10 @@ is the zero-phase filter actually zero-phase?
 
 - Overlap-add reduces seam boundary RMSE by **~35 dB** (synthetic) and **more on real CHB-MIT
   EEG**, at negligible latency.
-- The zero-phase floor is `3 × taps = 606` samples; below it the causal path mis-times events by
-  up to **~500 ms** (`(taps−1)/2/fs`). The design rule **`chunk + 2·overlap ≥ 3·taps`** keeps
-  windowed filtering zero-phase and artifact-free.
+- The zero-phase pad length is `3 × taps = 606` samples; the shortest valid input is **607**
+  samples. Below it the causal path mis-times events by up to **~500 ms** (`(taps−1)/2/fs`).
+  The design rule **`(chunk + 2·overlap)·fs > 3·taps`** keeps windowed filtering zero-phase and
+  artifact-free, and `safe_window.py` computes the needed overlap automatically.
 
 ## 5. Deliverables
 

@@ -1,8 +1,8 @@
 RESULT 1 (zero-phase regime, win=8 s):
-  boundary RMSE naive=14.930 uV -> overlap(0.5 s)=0.275 uV : reduction 34.7 dB at +4% latency (0.559 -> 0.579 ms/window).
+  boundary RMSE naive=14.930 uV -> overlap(0.5 s)=0.275 uV : reduction 34.7 dB at +2% latency (0.553 -> 0.563 ms/window).
 
 RESULT 2 (zero-phase length floor):
-  An order-200 FIR (202 taps) needs > 606 samples (3.03 s) for zero-phase filtfilt; a shorter window must use a causal filter instead.
+  An order-200 FIR (202 taps) has filtfilt padlen=606 samples; zero-phase filtering needs at least 607 samples (3.04 s). Shorter windows must use a causal filter instead.
   A windowed filter processes a span of chunk + 2*overlap. Large windows clear the floor and are zero-phase; small windows do not:
-    e.g. chunk=1 s + overlap=0.5 s = 400 samples (<606) => filtfilt_active=0, interior RMSE=30.67 uV (distorted everywhere, not just seams).
-  Design criterion to stay zero-phase: keep chunk + 2*overlap >= 3.03 s (>= 1.01 s overlap each side at a 1 s chunk), i.e. (chunk + 2*overlap)*fs >= 3*taps.
+    e.g. chunk=1 s + overlap=0.5 s = 400 samples (<607) => filtfilt_active=0, interior RMSE=30.67 uV (distorted everywhere, not just seams).
+  Design criterion to stay zero-phase: keep chunk + 2*overlap >= 3.04 s (>= 1.02 s overlap each side at a 1 s chunk), i.e. (chunk + 2*overlap)*fs > 3*taps.

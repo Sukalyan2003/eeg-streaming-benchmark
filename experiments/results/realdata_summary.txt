@@ -1,5 +1,5 @@
 CHB-MIT chb01_01.edf — fs=256 Hz, channels=['FP1-F7', 'F3-C3', 'C3-P3', 'P3-O1'], segment 600-720s.
-filtfilt floor = 606 samples (2.37 s at 256 Hz).
+filtfilt padlen = 606 samples (2.37 s at 256 Hz); shortest valid input = 607 samples (2.37 s).
 
 R1 (overlap-add vs naive, 8 s windows, real EEG):
   boundary RMSE  naive=12.959 uV  overlap(0.5s)=0.049 uV  -> 48.5 dB reduction.

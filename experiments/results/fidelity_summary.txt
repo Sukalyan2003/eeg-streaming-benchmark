@@ -1,4 +1,4 @@
-Filter taps=202, filtfilt floor=606 samples (3.03 s).
+Filter taps=202, filtfilt padlen=606 samples; shortest valid input=607 samples (3.04 s).
 Passband (1-25 Hz) gain: -0.64 +/- 1.54 dB (ideal 0 dB for filtfilt).
 50 Hz notch gain: -120.0 dB (deep rejection expected).
 Stopband @60 Hz: -120.0 dB.

@@ -4,7 +4,7 @@ Real-data confirmation of Results 1-3 on CHB-MIT scalp EEG (Option 2 external va
 Uses a single open-access EDF (PhysioNet CHB-MIT chb01_01.edf, 256 Hz, bipolar montage) to
 confirm, on real clinical EEG rather than synthetic signals:
   R1 — overlap-add reduces window-seam error vs naive per-window filtering;
-  R2 — the filtfilt length floor (3 x taps) and the small-chunk fallback regime;
+  R2 — the filtfilt pad length (3 x taps), shortest valid input, and small-chunk fallback regime;
   R3 — the uncompensated group-delay shift of the fallback path.
 
 The raw EDF is gitignored (experiments/data/). Download:
@@ -57,6 +57,7 @@ def main():
     n = sig.shape[1]
     (taps,) = bandpass_coefficients(float(fs), BP[0], BP[1], 200)
     floor = 3 * len(taps)
+    min_valid = floor + 1
 
     # R1: overlap-add vs naive at an 8 s window (zero-phase regime)
     win_s = 8.0
@@ -69,7 +70,7 @@ def main():
     db = 20 * np.log10(nb / (ob + 1e-12))
 
     # R3: group-delay shift of the fallback path on a real channel.
-    # Filter a short window (< floor -> lfilter fallback) and cross-correlate against the
+    # Filter a short window (< min_valid -> lfilter fallback) and cross-correlate against the
     # zero-phase whole-signal output to recover the lag.
     c = 0
     short = int(1.0 * fs)                         # 1 s window -> < floor at 256 Hz too
@@ -85,7 +86,8 @@ def main():
 
     lines = [
         f"CHB-MIT chb01_01.edf — fs={fs} Hz, channels={chans}, segment {SEG[0]:.0f}-{SEG[1]:.0f}s.",
-        f"filtfilt floor = {floor} samples ({floor/fs:.2f} s at {fs} Hz).",
+        f"filtfilt padlen = {floor} samples ({floor/fs:.2f} s at {fs} Hz); "
+        f"shortest valid input = {min_valid} samples ({min_valid/fs:.2f} s).",
         "",
         "R1 (overlap-add vs naive, 8 s windows, real EEG):",
         f"  boundary RMSE  naive={nb:.3f} uV  overlap(0.5s)={ob:.3f} uV  -> {db:.1f} dB reduction.",

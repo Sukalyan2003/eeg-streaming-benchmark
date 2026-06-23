@@ -1,0 +1,14 @@
+True per-window latency benchmark — 120 s segments, 1 s windows,
+FIR order 200; each request filters all channels of one window. 60 Hz refresh budget = 16.7 ms.
+
+=== chbmit: 10 files, fs=256.0 Hz, 8 channels ===
+  naive            : filter median   1.09 ms (worst p95   1.31); filter+feature median   2.56 ms (worst p95   3.11) -> WITHIN refresh budget
+  fixed_overlap    : filter median   1.03 ms (worst p95   1.90); filter+feature median   2.48 ms (worst p95   4.47) -> WITHIN refresh budget
+  scheduled_overlap: filter median   4.16 ms (worst p95   4.55); filter+feature median   5.68 ms (worst p95   6.36) -> WITHIN refresh budget
+
+=== sleepedf: 8 files, fs=100.0 Hz, 2 channels ===
+  naive            : filter median   0.31 ms (worst p95   0.49); filter+feature median   0.68 ms (worst p95   1.01) -> WITHIN refresh budget
+  fixed_overlap    : filter median   0.30 ms (worst p95   0.37); filter+feature median   0.66 ms (worst p95   0.75) -> WITHIN refresh budget
+  scheduled_overlap: filter median   1.08 ms (worst p95   1.18); filter+feature median   1.49 ms (worst p95   1.59) -> WITHIN refresh budget
+
+Per-window latency is measured directly (one timed filter call per window), not amortized from a whole-segment run.
