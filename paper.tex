@@ -7,6 +7,7 @@
 \usepackage{booktabs}
 \usepackage{cite}
 \usepackage{url}
+\usepackage[hidelinks]{hyperref}
 \graphicspath{{experiments/results/}}
 \setlength{\textfloatsep}{3pt plus 1pt minus 1pt}
 \setlength{\floatsep}{3pt plus 1pt minus 1pt}
@@ -89,14 +90,14 @@ time.
 \item A zero-phase length-floor result: below a length threshold \texttt{filtfilt} cannot run, so
 a streaming filter must relax the filter or fall back to a causal path, producing a measured
 event mis-timing of hundreds of milliseconds ($\sim$500\,ms at 200\,Hz, $\sim$0.4\,s at 256\,Hz,
-$\sim$1\,s at 100\,Hz, rising further with FIR order); we give a deterministic guard and implement it as a
+$\sim$1\,s at 100\,Hz, rising further with FIR tap count); we give a deterministic guard and implement it as a
 safe-window scheduler.
 \item A quantification of overlap-add filtering for windows, confirmed on two real datasets at
 different sampling rates, with $\sim$35\,dB seam-artifact reduction at negligible latency.
 \item A cascaded-tapering result for windowed PSD estimation: tapering twice biases relative band
 power for both Welch and multitaper, with a one-line remedy.
 \item An end-to-end EDF benchmark across 18 recordings at two sampling rates: sweeping segment
-duration, FIR order, and channel count for throughput, \emph{directly measuring} per-window
+duration, FIR tap count, and channel count for throughput, \emph{directly measuring} per-window
 latency against a display-refresh budget, and measuring boundary policies (prefetch /
 reflection) that make the scheduled guarantee hold at record edges, not only interior windows.
 \end{enumerate}
@@ -508,7 +509,7 @@ low-cost remedies, implemented as a safe-window scheduler and benchmarked across
 Future work extends to larger cohorts, deployment hardware, and montage-level correctness.
 
 \section*{Acknowledgment and Reproducibility}
-\textit{AI tools:} Claude 4.8 Opus assisted with drafting and code; the author reviewed all outputs and takes full responsibility. \textit{Reproducibility:} Code at \url{https://github.com/placeholder/eeg-benchmark}. Environment: Python 3.12, NumPy 2.4.1, SciPy 1.17.0, MNE 1.11.0. Results are deterministic (seed 0) with default Welch parameters on an x86\_64 Windows host. Raw EDFs are fetched from PhysioNet at runtime.
+\textit{AI tools:} Claude 4.8 Opus assisted with drafting and code; the author reviewed all outputs and takes full responsibility. \textit{Reproducibility:} Code at \url{https://github.com/Sukalyan2003/eeg-streaming-benchmark}. Environment: Python 3.12, NumPy 2.4.1, SciPy 1.17.0, MNE 1.11.0. Results are deterministic (seed 0) on an x86\_64 Windows host. Band definitions: delta 1--4\,Hz, theta 4--8\,Hz, alpha 8--13\,Hz, beta 13--25\,Hz. Welch parameters: Hann window, nperseg=256, noverlap=128, PSD frequency range 0--$\min(100\,\mathrm{Hz}, f_s/2)$, computed per-channel without prior averaging. Raw EDFs are fetched from PhysioNet at runtime.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
