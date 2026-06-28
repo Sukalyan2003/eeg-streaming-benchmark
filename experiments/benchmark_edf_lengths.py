@@ -72,6 +72,12 @@ RESULTS = HERE / "results"
 RESULTS.mkdir(exist_ok=True)
 
 METHODS = ["naive", "fixed_overlap", "scheduled_overlap", "whole_signal"]
+METHOD_LABELS = {
+    "naive": "naive",
+    "fixed_overlap": "fixed",
+    "scheduled_overlap": "scheduled",
+    "whole_signal": "whole",
+}
 DEFAULT_DURATIONS = [30.0, 60.0, 120.0, 300.0, 600.0]
 DEFAULT_ORDERS = [100, 200, 300, 400]
 DEFAULT_CHANNEL_COUNTS = [1, 2, 4, 8, 16]
@@ -427,7 +433,7 @@ def write_primary_outputs(rows, durations, order) -> None:
 
     # Figure: duration scaling per dataset, error bars across files, one panel per dataset.
     n = len(datasets)
-    fig, axes = plt.subplots(1, n, figsize=(6.5 * n, 4.5), squeeze=False)
+    fig, axes = plt.subplots(1, n, figsize=(4.8, 2.8), squeeze=False)
     for ax, ds in zip(axes[0], datasets):
         for method in METHODS:
             xs, ys, es = [], [], []
@@ -438,13 +444,14 @@ def write_primary_outputs(rows, durations, order) -> None:
                 m, s, _ = p
                 xs.append(duration_s); ys.append(m); es.append(s)
             if xs:
-                ax.errorbar(xs, ys, yerr=es, marker="o", capsize=3, label=method)
-        ax.set_xlabel("EDF duration processed (s)")
-        ax.set_ylabel("filter + feature processing time (s)")
-        ax.set_title(f"{ds}: processing time vs EDF duration")
+                ax.errorbar(xs, ys, yerr=es, marker="o", capsize=3,
+                            label=METHOD_LABELS[method])
+        ax.set_xlabel("duration (s)")
+        ax.set_ylabel("processing time (s)")
+        ax.set_title(ds, fontsize=10)
         ax.grid(True, alpha=0.3)
-        ax.legend(fontsize=8)
-    fig.tight_layout()
+        ax.legend(fontsize=7)
+    fig.tight_layout(pad=0.35)
     fig.savefig(RESULTS / "fig_edf_length_benchmark.png", dpi=300)
     plt.close(fig)
 
@@ -454,20 +461,20 @@ def write_order_outputs(rows) -> None:
         return
     _write_csv(RESULTS / "edf_order_sweep.csv", rows)
     datasets = list(dict.fromkeys(r["dataset"] for r in rows))
-    plt.figure(figsize=(8, 4.5))
+    plt.figure(figsize=(3.15, 2.0))
     for ds in datasets:
         for method in ["scheduled_overlap", "whole_signal"]:
             sub = sorted((r for r in rows if r["dataset"] == ds and r["method"] == method),
                          key=lambda r: r["order"])
             if sub:
                 plt.plot([r["order"] for r in sub], [r["processing_s"] for r in sub],
-                         "o-", label=f"{ds}:{method}")
+                         "o-", label=f"{ds}:{METHOD_LABELS[method]}")
     plt.xlabel("FIR order")
-    plt.ylabel("filter + feature processing time (s)")
-    plt.title("Processing time vs FIR order")
+    plt.ylabel("processing time (s)")
+    plt.title("FIR order", fontsize=9)
     plt.grid(True, alpha=0.3)
-    plt.legend(fontsize=8)
-    plt.tight_layout()
+    plt.legend(fontsize=6.5)
+    plt.tight_layout(pad=0.25)
     plt.savefig(RESULTS / "fig_edf_order_scaling.png", dpi=300)
     plt.close()
 
@@ -476,18 +483,18 @@ def write_channel_outputs(rows) -> None:
     if not rows:
         return
     _write_csv(RESULTS / "edf_channel_sweep.csv", rows)
-    plt.figure(figsize=(8, 4.5))
+    plt.figure(figsize=(3.15, 2.0))
     for method in METHODS:
         sub = sorted((r for r in rows if r["method"] == method), key=lambda r: r["channels"])
         if sub:
             plt.plot([r["channels"] for r in sub], [r["processing_s"] for r in sub],
-                     "o-", label=method)
-    plt.xlabel("number of channels")
-    plt.ylabel("filter + feature processing time (s)")
-    plt.title("Processing time vs channel count")
+                     "o-", label=METHOD_LABELS[method])
+    plt.xlabel("channels")
+    plt.ylabel("processing time (s)")
+    plt.title("Channel count", fontsize=9)
     plt.grid(True, alpha=0.3)
-    plt.legend(fontsize=8)
-    plt.tight_layout()
+    plt.legend(fontsize=6.5)
+    plt.tight_layout(pad=0.25)
     plt.savefig(RESULTS / "fig_edf_channel_scaling.png", dpi=300)
     plt.close()
 

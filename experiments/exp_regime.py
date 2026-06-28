@@ -141,26 +141,27 @@ def main():
     # fig: floor vs order
     orders = [r["order"] for r in osweep]
     floors = [r["padlen_samples"] for r in osweep]
-    plt.figure(figsize=(7, 4))
+    plt.figure(figsize=(6.0, 4.0))
     plt.plot(orders, floors, "o-", color="tab:blue")
+    plt.margins(0.15)
     for r in osweep:
         plt.annotate(f"{r['fallback_shift_ms']:.0f} ms shift", (r["order"], r["padlen_samples"]),
                      textcoords="offset points", xytext=(6, -12), fontsize=8)
     plt.xlabel("FIR order"); plt.ylabel("filtfilt pad length (samples)")
-    plt.title("filtfilt padlen = 3 × taps scales with FIR order")
-    plt.tight_layout(); plt.savefig(RESULTS / "fig_order_floor.png", dpi=300); plt.close()
+    plt.title("filtfilt length floor", fontsize=10)
+    plt.tight_layout(pad=0.35); plt.savefig(RESULTS / "fig_order_floor.png", dpi=300); plt.close()
 
     # fig: transition
     L = [r["total_len_s"] for r in trows]
     be = [r["boundary_rmse"] for r in trows]
-    plt.figure(figsize=(7, 4))
+    plt.figure(figsize=(4.2, 2.6))
     plt.semilogy(L, be, "o-", color="tab:purple")
     plt.axvline(min_valid_s, color="tab:red", ls="--", lw=1,
-                label=f"shortest valid zero-phase length = {min_valid_s:.2f} s")
-    plt.xlabel("total filtered length  chunk + 2·overlap  (s)")
-    plt.ylabel("boundary RMSE vs ground truth (µV, log)")
-    plt.title("Boundary error collapses once the zero-phase length is reached")
-    plt.legend(fontsize=8); plt.tight_layout()
+                label=f"zero-phase floor = {min_valid_s:.2f} s")
+    plt.xlabel("filtered length: chunk + 2·overlap (s)")
+    plt.ylabel("boundary RMSE (µV, log)")
+    plt.title("Boundary error vs length", fontsize=10)
+    plt.legend(fontsize=8); plt.tight_layout(pad=0.35)
     plt.savefig(RESULTS / "fig_transition.png", dpi=300); plt.close()
     print(f"\nWrote regime_order_sweep.csv, regime_transition.csv, regime_summary.txt, "
           "fig_order_floor.png, fig_transition.png")

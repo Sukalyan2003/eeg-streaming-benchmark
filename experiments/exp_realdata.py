@@ -105,14 +105,14 @@ def main():
     seam = seams[len(seams) // 2]
     sl = slice(seam - int(0.5 * fs), seam + int(0.5 * fs))
     t = np.arange(sl.start, sl.stop) / fs
-    plt.figure(figsize=(8, 4))
-    plt.plot(t, gt[c][sl], "k", lw=2, label="ground truth (whole-signal)")
+    plt.figure(figsize=(4.2, 2.6))
+    plt.plot(t, gt[c][sl], "k", lw=1.8, label="ground truth")
     plt.plot(t, naive[c][sl], color="tab:red", lw=1.1, label="naive per-window")
-    plt.plot(t, olap[c][sl], color="tab:green", lw=1.1, label="overlap-add (0.5 s)")
+    plt.plot(t, olap[c][sl], color="tab:green", lw=1.1, label="overlap-add")
     plt.axvline(seam / fs, color="gray", ls="--", lw=1, label="window seam")
     plt.xlabel("time (s)"); plt.ylabel(f"{chans[c]} (µV)")
-    plt.title("CHB-MIT real EEG: filtered signal across a window seam")
-    plt.legend(fontsize=8); plt.tight_layout()
+    plt.title("Real EEG across a seam", fontsize=10)
+    plt.legend(fontsize=8); plt.tight_layout(pad=0.35)
     plt.savefig(RESULTS / "fig_realdata_seam.png", dpi=300); plt.close()
     print(f"\nWrote {RESULTS}/realdata_summary.txt, fig_realdata_seam.png")
 

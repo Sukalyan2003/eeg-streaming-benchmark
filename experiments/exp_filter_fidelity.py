@@ -125,30 +125,30 @@ def main():
     print("\n".join(summary))
 
     # ---- fig: magnitude ----
-    plt.figure(figsize=(8, 4))
-    plt.plot(w, designed_db, color="0.6", lw=1, label="designed zero-phase |H|² (filtfilt)")
-    plt.plot(freqs, gdb, "o-", color="tab:blue", label="measured (bandpass+notch)")
-    plt.axvspan(BP[0], BP[1], color="tab:green", alpha=0.08, label="intended passband 0.5–30 Hz")
+    plt.figure(figsize=(4.2, 2.6))
+    plt.plot(w, designed_db, color="0.6", lw=1, label="designed |H|²")
+    plt.plot(freqs, gdb, "o-", color="tab:blue", label="measured")
+    plt.axvspan(BP[0], BP[1], color="tab:green", alpha=0.08, label="0.5-30 Hz")
     plt.axvline(50, color="tab:red", ls="--", lw=1, label="50 Hz notch")
     plt.ylim(-80, 5); plt.xlim(0, 65)
     plt.xlabel("frequency (Hz)"); plt.ylabel("gain (dB)")
-    plt.title("Filter magnitude response (zero-phase path)")
-    plt.legend(fontsize=8); plt.tight_layout()
+    plt.title("Zero-phase magnitude response", fontsize=10)
+    plt.legend(fontsize=8); plt.tight_layout(pad=0.35)
     plt.savefig(RESULTS / "fig_magnitude.png", dpi=300); plt.close()
 
     # ---- fig: transient shift ----
     sl = slice(int((t0 - 0.8) * FS), int((t0 + 0.8) * FS))
-    plt.figure(figsize=(8, 4))
+    plt.figure(figsize=(4.2, 2.6))
     plt.plot(t[sl], x[sl] / np.max(np.abs(x[sl])), color="k", lw=1, alpha=0.5, label="input (spike)")
     plt.plot(t[sl], y_zero[sl] / np.nanmax(np.abs(y_zero[sl])), color="tab:green",
-             label=f"zero-phase (filtfilt), shift {shift_zero_ms:+.0f} ms")
+             label=f"zero-phase, {shift_zero_ms:+.0f} ms")
     yfb = y_fb[sl]
     plt.plot(t[sl], yfb / np.nanmax(np.abs(yfb)), color="tab:red",
-             label=f"fallback (lfilter), shift {shift_fb_ms:+.0f} ms")
+             label=f"fallback, {shift_fb_ms:+.0f} ms")
     plt.axvline(t0, color="gray", ls="--", lw=1, label="true spike time")
     plt.xlabel("time (s)"); plt.ylabel("normalized amplitude")
-    plt.title("Event timing: zero-phase vs short-window fallback")
-    plt.legend(fontsize=8); plt.tight_layout()
+    plt.title("Event timing fallback", fontsize=10)
+    plt.legend(fontsize=8); plt.tight_layout(pad=0.35)
     plt.savefig(RESULTS / "fig_transient_shift.png", dpi=300); plt.close()
     print(f"\nWrote {RESULTS}/fidelity_metrics.csv, fidelity_summary.txt, "
           "fig_magnitude.png, fig_transient_shift.png")

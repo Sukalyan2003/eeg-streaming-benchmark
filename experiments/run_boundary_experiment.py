@@ -160,14 +160,14 @@ def _fig_seam(sig, gt, fs):
     seam = int(60 * fs)  # a seam at 60 s
     sl = slice(seam - int(0.5 * fs), seam + int(0.5 * fs))
     t = np.arange(sl.start, sl.stop) / fs
-    plt.figure(figsize=(8, 4))
-    plt.plot(t, gt[c][sl], label="ground truth (whole-signal)", lw=2, color="k")
+    plt.figure(figsize=(4.2, 2.6))
+    plt.plot(t, gt[c][sl], label="ground truth", lw=1.8, color="k")
     plt.plot(t, naive[sl], label="naive per-window", lw=1.2, color="tab:red", alpha=0.9)
-    plt.plot(t, olap[sl], label="overlap-add (0.5 s)", lw=1.2, color="tab:green", alpha=0.9)
+    plt.plot(t, olap[sl], label="overlap-add", lw=1.2, color="tab:green", alpha=0.9)
     plt.axvline(seam / fs, color="gray", ls="--", lw=1, label="window seam")
     plt.xlabel("time (s)"); plt.ylabel("amplitude (µV)")
-    plt.title("Filtered EEG across a 1 s window seam")
-    plt.legend(fontsize=8); plt.tight_layout()
+    plt.title("Filtered EEG across a seam", fontsize=10)
+    plt.legend(fontsize=8, loc="lower left"); plt.tight_layout(pad=0.35)
     plt.savefig(RESULTS / "fig_seam.png", dpi=300); plt.close()
 
 

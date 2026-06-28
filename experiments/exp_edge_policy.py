@@ -168,9 +168,9 @@ def main() -> None:
     (RESULTS / "edge_policy_summary.txt").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 
-    # Figure: grouped bars per policy, per location, per dataset.
-    fig, axes = plt.subplots(1, len(datasets_seen), figsize=(6.0 * len(datasets_seen), 4.2),
-                             squeeze=False)
+    # Figure: grouped bars per policy, per location, per dataset. Use a column-sized
+    # side-by-side layout so labels remain readable after IEEE scaling.
+    fig, axes = plt.subplots(1, len(datasets_seen), figsize=(4.8, 2.7), squeeze=False)
     for ax, ds in zip(axes[0], datasets_seen):
         x = np.arange(len(locations))
         width = 0.25
@@ -178,11 +178,11 @@ def main() -> None:
             means = [stat.get((ds, loc, pol), (np.nan, 0))[0] for loc in locations]
             errs = [stat.get((ds, loc, pol), (np.nan, 0))[1] for loc in locations]
             ax.bar(x + (i - 1) * width, means, width, yerr=errs, capsize=3, label=pol)
-        ax.set_xticks(x); ax.set_xticklabels(locations)
-        ax.set_ylabel("boundary RMSE vs zero-phase reference (µV)")
-        ax.set_title(f"{ds}: edge-window boundary policies")
-        ax.legend(fontsize=8)
-    fig.tight_layout()
+        ax.set_xticks(x); ax.set_xticklabels(["start", "interior"])
+        ax.set_ylabel("RMSE (µV)")
+        ax.set_title(ds, fontsize=10)
+        ax.legend(fontsize=6.5)
+    fig.tight_layout(pad=0.25)
     fig.savefig(RESULTS / "fig_edge_policy.png", dpi=300)
     plt.close(fig)
     print("\nWrote edge_policy.csv, edge_policy_summary.txt, fig_edge_policy.png")
