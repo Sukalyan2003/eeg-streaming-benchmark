@@ -28,7 +28,7 @@ Email: #3
 \author{%
 \compactauthor{Sukalyan Roy}{Avinya Neurotech}{sukalyanroyofficial@gmail.com}\\[-0.1ex]
 \begin{tabular}{@{}c@{\hspace{0.12in}}c@{\hspace{0.12in}}c@{}}
-\compactauthor{Prof John Thomas}{Rochester Institute of Technology}{j.thomas@duke.edu}
+\compactauthor{John Thomas}{Rochester Institute of Technology}{j.thomas@duke.edu}
 &
 \compactauthor{Sowmya Darapaneni}{Avinya Neurotech}{avinyaneurotech@gmail.com}
 &
@@ -46,16 +46,15 @@ Using a standard-library reference chain, synthetic ground truth, and two open d
 100\,Hz), we identify three failures and deterministic guards. First, filtering each display
 window independently creates seam artifacts. Filtering an extended window and retaining only its
 center reduces seam error by about 35\,dB on synthetic data and 23--51\,dB on real data with
-negligible latency. Second, zero-phase filtering with \texttt{filtfilt} requires more than three
+compute latency below one display refresh (excluding network I/O). Second, zero-phase filtering with \texttt{filtfilt} requires more than three
 filter lengths of data. Shorter requests force a causal fallback that shifts events by hundreds of
 milliseconds ($\sim$500\,ms at 200\,Hz, $\sim$0.4\,s at 256\,Hz, and $\sim$1\,s at 100\,Hz). We
 derive the guard $(\mathrm{chunk}+2\!\cdot\!\mathrm{overlap})f_s >
 3\!\cdot\!\mathrm{taps}$ and implement it as a sampling-rate-aware scheduler. Third, manually
 tapering a window before Welch or multitaper estimation double-tapers the data and biases relative
 band power by up to $\sim$12 percentage points. Across 18 recordings, scheduled overlap keeps
-interior windows zero-phase with median per-window latency below 6\,ms and real-time factors far
-below one. The result is a reproducible set of correctness checks for streaming clinical EEG
-processing.
+interior windows zero-phase with median per-window compute latency below 6\,ms and real-time factors far
+below one. The result is a reproducible set of correctness checks relevant to browser-based clinical EEG review systems.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -72,12 +71,11 @@ at a time, so only the visible window need be fetched, filtered, and re-referenc
 This shift moves standard digital signal processing (DSP) operations, bandpass and notch
 filtering, and quantitative electroencephalography (QEEG) feature extraction from a whole-signal,
 offline setting
-into a windowed, real-time setting. Operations that are textbook-correct offline can become
-subtly and silently wrong under windowing: a filter that is zero-phase on a whole recording may
+into a windowed, real-time setting. While overlap-add and filter padding are textbook DSP concepts, they can fail silently under windowing in stateless viewers: a filter that is zero-phase on a whole recording may
 not be on a short window, and an estimator that is unbiased on a clean buffer may be biased once
 a window is tapered upstream.
 
-This paper characterizes that gap and derives deterministic criteria to close it. Rather than
+This paper quantifies these timing and spectral errors, deriving deterministic criteria to close the gap. Rather than
 propose a new algorithm, we take the standard streaming DSP chain as the system under test: a
 finite impulse response (FIR) bandpass applied with \texttt{scipy.signal.filtfilt}, an infinite
 impulse response (IIR) notch, and a Welch/multitaper power spectral density (PSD) routine. We
@@ -131,7 +129,7 @@ double-tapering errors and their bias on clinical relative band power are under-
 \section{Methods}
 \subsection{Reference DSP primitives}
 We evaluate the conventional streaming chain implemented with standard libraries only: an FIR
-bandpass (order 200, 202 taps, designed with \texttt{firwin} and a Hamming window) applied with
+bandpass (202 taps, designed with \texttt{firwin} and a Hamming window) applied with
 forward and backward zero-phase filtering (\texttt{scipy.signal.filtfilt}); an IIR notch
 (\texttt{iirnotch}) applied with \texttt{filtfilt}; and a Welch/multitaper PSD routine implemented
 with SciPy (SciPy Developers, United States) and MNE-Python (MNE Developers, international community)
@@ -180,7 +178,7 @@ To connect correctness to deployability, we run three measurements over all 18 l
 both datasets and report mean\,$\pm$\,standard deviation (SD) across each dataset. First,
 \texttt{benchmark\_edf\_lengths.py} loads the first $N$ seconds of an EDF, runs filtering and
 Welch relative-band-power extraction, and reports load time, filter time, feature time, array
-memory, and real-time factor. It sweeps segment duration (30--600\,s), FIR order (100--400), and
+memory, and real-time factor. It sweeps segment duration (30--600\,s), FIR tap count (102--402), and
 channel count (1--16) for the four paths: naive, fixed 0.5\,s overlap-add, scheduled-overlap, and
 whole-signal. Timing runs without memory instrumentation, which would otherwise inflate wall time.
 Second, \texttt{benchmark\_latency.py} filters one display window at a time and times each
@@ -249,28 +247,28 @@ annotation alignment, are mis-timed by about half a second.
 short-window causal fallback shifts the event by $+500$\,ms.\label{fig:shift}}
 \end{figure}
 
-\subsection{R4: Generalization across FIR order and robustness}
+\subsection{R4: Generalization across FIR tap count and robustness}
 The pad length equals $3T$ for tap count $T$, the shortest valid zero-phase input is $3T+1$, and
-the fallback shift equals $(T-1)/2/f_s$; all scale with FIR order (Table~\ref{tab:order}).
+the fallback shift equals $(T-1)/2/f_s$; all scale with FIR tap count (Table~\ref{tab:order}).
 Sweeping the total filtered length through the floor shows boundary error collapse sharply at the
 threshold (Fig.~\ref{fig:transition}). Across 24 seeds the overlap-add reduction is
 $34.3\pm2.4$\,dB (naive $14.4\pm3.9\,\mu\mathrm{V}$; overlap-add
 $0.271\pm0.032\,\mu\mathrm{V}$), confirming
-robustness and generalizing criterion~\eqref{eq:criterion} to any FIR order.
+robustness and generalizing criterion~\eqref{eq:criterion} to any FIR tap count.
 
 \begin{table}[t]
-\caption{Zero-phase pad length and fallback shift scale with FIR order (200\,Hz; representative
-rows from the eight-order sweep).\label{tab:order}}
+\caption{Zero-phase pad length and fallback shift scale with FIR tap count (200\,Hz; representative
+rows from the tap-count sweep).\label{tab:order}}
 \centering
-\begin{tabular}{cccc}
+\begin{tabular}{ccc}
 \toprule
-FIR order & taps & pad length (samples / s) & fallback shift (ms) \\
+FIR taps & pad length (samples / s) & fallback shift (ms) \\
 \midrule
-50  & 52  & 156 / 0.78  & 130  \\
-100 & 102 & 306 / 1.53  & 255  \\
-200 & 202 & 606 / 3.03  & 505  \\
-300 & 302 & 906 / 4.53  & 755  \\
-500 & 502 & 1506 / 7.53 & 1255 \\
+52  & 156 / 0.78  & 130  \\
+102 & 306 / 1.53  & 255  \\
+202 & 606 / 3.03  & 505  \\
+302 & 906 / 4.53  & 755  \\
+502 & 1506 / 7.53 & 1255 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -385,10 +383,10 @@ extra cost over the unsafe path is real but small in absolute terms. Peak array 
 stays modest ($\approx$20\,MB for a 600\,s 8-channel segment). Per-window interactivity is treated
 separately in R8.
 
-\emph{Order and channel scaling.} Because the scheduler grows context with the floor, the cost of
-correctness rises with FIR order: at 256\,Hz a 120\,s segment costs 0.37\,s at order 100 (0.5\,s
-context) but 1.89\,s at order 400 (1.86\,s context), while the whole-signal reference is flat at
-$\sim$0.17\,s (Fig.~\ref{fig:edfscale}, left); at 100\,Hz the order-400 scheduler needs 5.54\,s of
+\emph{Tap count and channel scaling.} Because the scheduler grows context with the floor, the cost of
+correctness rises with FIR tap count: at 256\,Hz a 120\,s segment costs 0.37\,s at 102 taps (0.5\,s
+context) but 1.89\,s at 402 taps (1.86\,s context), while the whole-signal reference is flat at
+$\sim$0.17\,s (Fig.~\ref{fig:edfscale}, left); at 100\,Hz the 402-tap scheduler needs 5.54\,s of
 context per side. Processing time is linear in channel count for every method
 (Fig.~\ref{fig:edfscale}, right). The benchmark is single-machine and should be repeated on target
 hardware before product latency claims, but the ordering of the methods and the linear scaling are
@@ -431,7 +429,7 @@ Sleep-EDF & naive             & $0.31\pm0.01$ & 0.5 & no  \\
 \centering
 \includegraphics[width=0.49\columnwidth]{fig_edf_order_scaling.png}\hfill
 \includegraphics[width=0.49\columnwidth]{fig_edf_channel_scaling.png}
-\caption{Scheduled-overlap cost scaling (120\,s segments). Left: vs.\ FIR order, cost rises as the
+\caption{Scheduled-overlap cost scaling (120\,s segments). Left: vs.\ FIR tap count, cost rises as the
 scheduler grows context to clear the larger floor, while the whole-signal reference is flat.
 Right: processing time is linear in channel count for all paths (CHB-MIT).\label{fig:edfscale}}
 \end{figure}
@@ -496,7 +494,7 @@ but introduce non-linear phase, while stateful continuous filtering avoids it en
 by maintaining delay lines, albeit complicating stateless web architectures.
 R5 follows from cascaded-tapering algebra. R6 confirms findings on real recordings.
 R7--R9 runtime benchmarks exclude network I/O; prefetching overlap context increases payload size.
-Finally, while R3 establishes synthetic transient shifts, downstream impact on clinical classifiers remains future work.
+Finally, while R3 establishes synthetic transient shifts, downstream impact on clinical classifiers remains future work; this benchmark does not prove improved diagnostic accuracy or clinical safety.
 We evaluate one reference implementation, but the invariants are common to widely used 
 libraries and are relevant to medical-device software life-cycle assurance~\cite{iec62304}.
 
@@ -510,7 +508,7 @@ low-cost remedies, implemented as a safe-window scheduler and benchmarked across
 Future work extends to larger cohorts, deployment hardware, and montage-level correctness.
 
 \section*{Acknowledgment and Reproducibility}
-\textit{Declaration of AI-assisted tools.} During preparation of this work, the author used Claude Opus 4.8 (Anthropic) to assist with language drafting/editing, code implementation support, and preparation of plotting/figure scripts. All AI-assisted outputs were reviewed, tested, and edited by the author. The author takes full responsibility for the content, results, code, and conclusions of this work. The released scripts reproduce the reported results in the pinned environment, using raw clinical EDFs downloaded from PhysioNet at run time.
+\textit{AI tools:} Claude 4.8 Opus assisted with drafting and code; the author reviewed all outputs and takes full responsibility. \textit{Reproducibility:} Code at \url{https://github.com/placeholder/eeg-benchmark}. Environment: Python 3.12, NumPy 2.4.1, SciPy 1.17.0, MNE 1.11.0. Results are deterministic (seed 0) with default Welch parameters on an x86\_64 Windows host. Raw EDFs are fetched from PhysioNet at runtime.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
