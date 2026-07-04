@@ -1,13 +1,79 @@
-\documentclass[conference]{IEEEtran}
+\documentclass[conference]{IEEEtranSPMB}
+\IEEEoverridecommandlockouts
 % Keep PDF metadata under author control: omit the build timestamp and randomized trailer id.
 \ifdefined\pdfinfoomitdate\pdfinfoomitdate=1\fi
 \ifdefined\pdftrailerid\pdftrailerid{}\fi
-\usepackage{graphicx}
-\usepackage{amsmath}
+\ifCLASSINFOpdf
+\else
+\fi
+\usepackage{amsmath,graphicx,soul,subcaption,balance}
+\usepackage[numbers,sort&compress]{natbib}
+\renewcommand\bibsection{\section*{\normalsize References}}
+\usepackage{parskip}
+\usepackage{float}
+\usepackage[all]{nowidow}
+\usepackage{mathptmx}
+\usepackage{multirow}
+\usepackage{color}
+\usepackage{mathrsfs}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{array}
+\usepackage[hyphens,spaces,obeyspaces]{url}
+\def\UrlFont{\em}
+\usepackage[papersize={8.5in,11in}, left=1in, right=1in, top=1in, bottom=1in]{geometry}
+\usepackage[singlelinecheck=false,justification=centering]{caption}
+\usepackage{xcolor,colortbl}
 \usepackage{booktabs}
-\usepackage{cite}
-\usepackage{url}
-\usepackage[hidelinks]{hyperref}
+
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\DeclareCaptionLabelFormat{mylabel}{#1 #2.\hspace{0.7ex}}
+\captionsetup[figure]{font=small,labelformat=mylabel,labelsep=none,name=Figure}
+\captionsetup[table]{font=small,labelformat=mylabel,labelsep=none,name=Table}
+\renewcommand{\thetable}{\arabic{table}}
+\captionsetup{justification=justified,singlelinecheck=true}
+\captionsetup{belowskip=0pt}
+\linespread{1.02}
+\definecolor{light-gray}{gray}{0.83}
+\newcommand{\GREY}{\cellcolor{light-gray}\bf}
+\baselineskip12pt
+\parskip=0pt
+\newcommand{\spmbtitlefont}{\fontsize{11.0pt}{11.00pt}\selectfont\bf\vspace{0.7em}}
+\newcommand{\spmbauthorfont}{\fontsize{11.0pt}{11.0pt}\selectfont\vspace{0em}}
+\newcommand{\subparagraph}{}
+\usepackage[compact]{titlesec}
+\titleformat{\section}
+   {\center\normalfont\sc}{\thesection.}{0.7ex}{}
+\titlespacing{\section}{0pt}{2ex}{1.5ex}
+\titlespacing{\subsection}{0pt}{1.5ex}{1.2ex}
+\titlespacing{\subsubsection}{0pt}{1ex}{0.9ex}
+\setlength{\parskip}{10pt}
+\makeatletter
+\renewcommand*{\@seccntformat}[1]{\csname the#1\endcsname .\hspace{0.7em}}
+\makeatother
+\hyphenation{op-tical net-works semi-conduc-tor}
+\usepackage{fancyhdr}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancypagestyle{firststyle}
+{
+   \fancyhf{}
+   \fancyfoot[L]{\scriptsize 979-8-3315-7370-6/25/\$31.00 \copyright2026 IEEE}
+   \fancyfoot[R]{\scriptsize June 29, 2026}
+   \fancyfoot[C]{\scriptsize IEEE SPMB 2026}
+}
+\thispagestyle{firststyle}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\fontsize{8}{0}\selectfont Page \thepage\ of \pageref{LastPage}}
+\lhead{\fontsize{8}{0}\selectfont \PaperTitleSummary}
+\fancyfoot[L]{\scriptsize 979-8-3315-7370-6/25/\$31.00 \copyright2026 IEEE}
+\fancyfoot[R]{\scriptsize June 29, 2026}
+\fancyfoot[C]{\scriptsize IEEE SPMB 2026}
+\footskip = 40pt
+\voffset = -5pt
 \graphicspath{{experiments/results/}}
 \setlength{\textfloatsep}{3pt plus 1pt minus 1pt}
 \setlength{\floatsep}{3pt plus 1pt minus 1pt}
@@ -15,27 +81,32 @@
 \setlength{\abovecaptionskip}{2pt plus 1pt minus 1pt}
 \setlength{\belowcaptionskip}{0pt plus 1pt minus 1pt}
 
+\title{\spmbtitlefont A Correctness and Runtime Benchmark for Windowed Real-Time EEG Signal Processing:\\
+Phase, Windowing, and Spectral Estimation
+{\vspace{-2.4\baselineskip}
+}
+}
+
+\author{\spmbauthorfont\IEEEauthorblockN{
+S.~Roy\textsuperscript{\it 1},
+J.~Thomas\textsuperscript{\it 2},
+S.~Darapaneni\textsuperscript{\it 1} and
+A.~Barik\textsuperscript{\it 1}
+}
+\vspace{0.9em}
+\IEEEauthorblockA{\spmbauthorfont
+1. Avinya NeuroTech Pvt Ltd, India \\
+2. Rochester Institute of Technology, Rochester, New York, USA \\
+sukalyanroyofficial@gmail.com, avinyaneurotech@gmail.com, aishwarya25252@gmail.com \\
+j.thomas@duke.edu
+}
+}
+
+\newcommand{\PaperTitleSummary}{S.\ Roy, et al.: A Correctness ...}
+
 \begin{document}
 \raggedbottom%
-\title{A Correctness and Runtime Benchmark for Windowed Real-Time Electroencephalography (EEG) Signal Processing:\\
-Phase, Windowing, and Spectral Estimation}
-
-\newcommand{\compactauthor}[3]{%
-\begin{tabular}[t]{@{}c@{}}
-\textbf{#1}\\[-0.45ex]
-#2\\[-0.45ex]
-Email: #3
-\end{tabular}}
-\author{%
-\compactauthor{Sukalyan Roy}{Avinya Neurotech}{sukalyanroyofficial@gmail.com}\\[-0.1ex]
-\begin{tabular}{@{}c@{\hspace{0.12in}}c@{\hspace{0.12in}}c@{}}
-\compactauthor{John Thomas}{Rochester Institute of Technology}{j.thomas@duke.edu}
-&
-\compactauthor{Sowmya Darapaneni}{Avinya Neurotech}{avinyaneurotech@gmail.com}
-&
-\compactauthor{Aishwarya Barik}{Avinya Neurotech}{aishwarya25252@gmail.com}
-\end{tabular}}
-
+\IEEEaftertitletext{}
 \maketitle
 
 \begin{abstract}
@@ -63,6 +134,9 @@ Electroencephalography (EEG), digital signal processing (DSP), real-time filteri
 filtering, overlap-add, group delay, quantitative electroencephalography (QEEG), power spectral
 density (PSD), European Data Format (EDF), reproducibility.
 \end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+\thispagestyle{firststyle}
 
 \section{Introduction}
 Clinical electroencephalography (EEG) is increasingly reviewed through networked, browser- and
@@ -315,9 +389,9 @@ samples, so the shortest valid zero-phase span is 607 samples, i.e.\ 2.37\,s at 
 it is fixed in samples its duration scales with $f_s$. The
 fallback shift, measured by cross-correlation against the zero-phase output, is
 \textbf{$389\pm7$}\,ms, matching the predicted $(\mathrm{taps}-1)/2/f_s$
-(|measured$-$theory| $=$ \textbf{$4.0\pm6.5$}\,ms). Per-subject values are consistent
-(Table~\ref{tab:ms}): the overlap-add reduction is 47--55\,dB across subjects and the fallback
-shift clusters tightly around the predicted group delay.
+(|measured$-$theory| $=$ \textbf{$4.0\pm6.5$}\,ms). Per-subject values are consistent: the
+overlap-add reduction is 47--55\,dB across subjects and the fallback shift clusters tightly
+around the predicted group delay.
 
 The results are not specific to one dataset or sampling rate. On \textbf{8} Sleep-EDF
 subjects (100\,Hz, a different population and montage), overlap-add reduces seam boundary RMSE by
@@ -333,30 +407,6 @@ than $\sim$0.4\,s: the lower the sampling rate, the longer both the floor and th
 \caption{CHB-MIT real EEG across a window seam: naive filtering deviates at the seam; overlap-add
 matches the whole-signal reference.\label{fig:real}}
 \end{figure}
-
-\begin{table}[t]
-\caption{Per-subject CHB-MIT confirmation (first recording, 256\,Hz, 8\,s windows). Predicted
-group delay $(\mathrm{taps}-1)/2/f_s = 393$\,ms.\label{tab:ms}}
-\centering
-\begin{tabular}{lcc}
-\toprule
-Subject & overlap-add reduction (dB) & fallback shift (ms) \\
-\midrule
-chb01 & 48.5 & 391 \\
-chb02 & 48.7 & 391 \\
-chb03 & 52.6 & 369 \\
-chb04 & 55.0 & 393 \\
-chb05 & 51.1 & 391 \\
-chb06 & 47.4 & 391 \\
-chb07 & 51.2 & 391 \\
-chb09 & 48.7 & 391 \\
-chb10 & 52.3 & 391 \\
-chb11 & 50.1 & 391 \\
-\midrule
-mean\,$\pm$\,SD & $50.6\pm2.2$ & $389\pm7$ \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \subsection{R7: EDF runtime benchmark and the scheduled-overlap guard}
 The scheduler turns the criterion into a deployable configuration rather than a post hoc warning.
@@ -387,9 +437,9 @@ separately in R8.
 \emph{Tap count and channel scaling.} Because the scheduler grows context with the floor, the cost of
 correctness rises with FIR tap count: at 256\,Hz a 120\,s segment costs 0.37\,s at 102 taps (0.5\,s
 context) but 1.89\,s at 402 taps (1.86\,s context), while the whole-signal reference is flat at
-$\sim$0.17\,s (Fig.~\ref{fig:edfscale}, left); at 100\,Hz the 402-tap scheduler needs 5.54\,s of
+$\sim$0.17\,s; at 100\,Hz the 402-tap scheduler needs 5.54\,s of
 context per side. Processing time is linear in channel count for every method
-(Fig.~\ref{fig:edfscale}, right). The benchmark is single-machine and should be repeated on target
+in the channel sweep. The benchmark is single-machine and should be repeated on target
 hardware before product latency claims, but the ordering of the methods and the linear scaling are
 machine-independent.
 
@@ -407,8 +457,8 @@ over the unsafe paths (record edges need a boundary policy; see text).\label{fig
 factor (RTF) is reported in units of $\times10^{-3}$; int.\ safe: interior windows stay in the zero-phase regime (record
 edges need a boundary policy, R9). Per-window latency is reported in R8.\label{tab:edf}}
 \centering
-\footnotesize
-\setlength{\tabcolsep}{3pt}
+\scriptsize
+\setlength{\tabcolsep}{2pt}
 \begin{tabular}{llccc}
 \toprule
 Dataset & Method & time (s) & RTF ($\times10^{-3}$) & int.\ safe \\
@@ -426,15 +476,6 @@ Sleep-EDF & naive             & $0.31\pm0.01$ & 0.5 & no  \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.49\columnwidth]{fig_edf_order_scaling.png}\hfill
-\includegraphics[width=0.49\columnwidth]{fig_edf_channel_scaling.png}
-\caption{Scheduled-overlap cost scaling (120\,s segments). Left: vs.\ FIR tap count, cost rises as the
-scheduler grows context to clear the larger floor, while the whole-signal reference is flat.
-Right: processing time is linear in channel count for all paths (CHB-MIT).\label{fig:edfscale}}
-\end{figure}
-
 \subsection{R8: Measured per-window latency}
 The benchmark above reports whole-segment throughput. Interactivity is governed by the cost of a
 single window, so \texttt{benchmark\_latency.py} measures that cost directly. It filters the signal
@@ -450,8 +491,8 @@ amortized estimate from R7, confirming the throughput figure was not hiding a pe
 \subsection{R9: Making the record edges operational}
 R7's guarantee is for interior windows; the first/last window of a record has one-sided context
 and would otherwise fall to the causal regime. We measure three boundary policies for the edge
-window against the whole-signal zero-phase reference (\texttt{exp\_edge\_policy.py},
-Fig.~\ref{fig:edge}). For a window in the interior of a recording (a view whose left edge is not
+window against the whole-signal zero-phase reference (\texttt{exp\_edge\_policy.py}). For a window
+in the interior of a recording (a view whose left edge is not
 the record start), \emph{prefetching} real neighboring samples to clear the floor makes the edge
 window essentially exact: boundary RMSE $0.001\,\mu$V versus $56\,\mu$V for the unguarded causal
 fallback on CHB-MIT (a $94$\,dB reduction), and likewise on Sleep-EDF\@. At the \emph{true} record
@@ -464,15 +505,6 @@ exists (which makes interior-of-record edges exact), reflect-pad at true record 
 avoid the causal regime, and never silently take the causal path. The scheduled configuration is
 then operationally zero-phase at interior windows, with reduced (not eliminated) error at the two
 true record boundaries.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{fig_edge_policy.png}
-\caption{Edge-window boundary RMSE versus the zero-phase reference for three policies, at the true
-record start and at an interior-of-record view edge (mean\,$\pm$\,SD across channels and files).
-Prefetch is exact where real context exists; reflection helps at true boundaries; the causal
-fallback is worst.\label{fig:edge}}
-\end{figure}
 
 \section{Discussion}
 The results reduce to a small set of correctness invariants for streaming clinical EEG DSP\@.
@@ -495,9 +527,10 @@ but introduce non-linear phase, while stateful continuous filtering avoids it en
 by maintaining delay lines, albeit complicating stateless web architectures.
 R5 follows from cascaded-tapering algebra. R6 confirms findings on real recordings.
 R7--R9 runtime benchmarks exclude network I/O; prefetching overlap context increases payload size.
-Finally, while R3 establishes synthetic transient shifts, downstream impact on clinical classifiers remains future work; this benchmark does not prove improved diagnostic accuracy or clinical safety.
-We evaluate one reference implementation, but the invariants are common to widely used 
-libraries and are relevant to medical-device software life-cycle assurance~\cite{iec62304}.
+Finally, while R3 establishes synthetic transient shifts, downstream impact on clinical
+classifiers remains future work; this benchmark does not prove improved diagnostic accuracy or
+clinical safety. We evaluate one reference implementation, but the invariants are common to widely
+used libraries.
 
 \section{Conclusion}
 Moving routine EEG DSP into a windowed, real-time setting introduces silent correctness failures
@@ -509,9 +542,18 @@ low-cost remedies, implemented as a safe-window scheduler and benchmarked across
 Future work extends to larger cohorts, deployment hardware, and montage-level correctness.
 
 \section*{Acknowledgment and Reproducibility}
-\textit{AI tools:} Claude 4.8 Opus assisted with drafting and code; the author reviewed all outputs and takes full responsibility. \textit{Reproducibility:} Code at \url{https://github.com/Sukalyan2003/eeg-streaming-benchmark}. Environment: Python 3.12, NumPy 2.4.1, SciPy 1.17.0, MNE 1.11.0. Results are deterministic (seed 0) on an x86\_64 Windows host. Band definitions: delta 1--4\,Hz, theta 4--8\,Hz, alpha 8--13\,Hz, beta 13--25\,Hz. Welch parameters: Hann window, nperseg=256, noverlap=128, PSD frequency range 0--$\min(100\,\mathrm{Hz}, f_s/2)$, computed per-channel without prior averaging. Raw EDFs are fetched from PhysioNet at runtime.
+\textit{Artificial intelligence disclosure:} Claude 4.8 Opus and OpenAI Codex were used for
+drafting, code, and formatting assistance in the manuscript and experiment scripts; the authors
+reviewed all outputs and take full responsibility for the submitted work. \textit{Reproducibility:}
+Code and exact parameters are available at
+\url{https://github.com/Sukalyan2003/eeg-streaming-benchmark}. Results are deterministic (seed 0);
+raw EDFs are fetched from PhysioNet at runtime.
 
-\bibliographystyle{IEEEtran}
-\bibliography{references}
+\setlength{\bibsep}{2.5pt plus 0ex}
+\footnotesize
+\bibliographystyle{IEEEbibSPMB}
+\bibliography{IEEEabrv,references}
+
+\label{LastPage}
 
 \end{document}
