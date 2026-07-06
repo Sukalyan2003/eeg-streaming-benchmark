@@ -3,11 +3,11 @@ Regime generalization: FIR-order sweep, the chunk-length transition, and seed ro
 
 Generalizes Results 1-3 beyond the single order-200 / single-seed configuration:
 
-  #1 FIR-order sweep — the zero-phase pad length is 3 x taps; verify the pad length and
+  #1 FIR-order sweep - the zero-phase pad length is 3 x taps; verify the pad length and
      the minimum overlap to stay zero-phase scale with FIR order.
-  #3 Transition curve — sweep total filtered length L = chunk + 2*overlap through the floor and
+  #3 Transition curve - sweep total filtered length L = chunk + 2*overlap through the floor and
      show the abrupt jump in boundary error and event-timing shift at L > 3 x taps.
-  #2 Seed robustness — repeat the overlap-add boundary result across seeds; report mean +/- SD.
+  #2 Seed robustness - repeat the overlap-add boundary result across seeds; report mean +/- SD.
 
 Outputs under results/: regime_order_sweep.csv, regime_transition.csv,
 fig_order_floor.png, fig_transition.png, regime_summary.txt

@@ -144,7 +144,7 @@ def main() -> None:
     datasets_seen = list(dict.fromkeys(r["dataset"] for r in rows))
     locations = ["record_start", "interior"]
     policies = ["causal", "reflect_zerophase", "prefetch"]
-    lines = ["Boundary-policy experiment — first/edge displayed window vs whole-signal zero-phase",
+    lines = ["Boundary-policy experiment - first/edge displayed window vs whole-signal zero-phase",
              f"reference. FIR order {ORDER}, {CHUNK_S:g} s window. Boundary RMSE in uV "
              "(mean +/- SD across channels x files)."]
     for ds in datasets_seen:

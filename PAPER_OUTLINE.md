@@ -1,4 +1,4 @@
-# Option 2 — Paper Structure & Literature-Review Plan
+# Option 2 - Paper Structure & Literature-Review Plan
 
 Target: IEEE SPMB, Paper track (original, ~4–6 pages, IEEE two-column, oral). Working title:
 *A Correctness and Runtime Benchmark for Windowed Real-Time EEG Signal Processing: Phase,
@@ -30,7 +30,7 @@ estimation. End each with the gap we fill.
 
 **III. Methods (~1–1.25 p).**
 - A. Reference DSP primitives (`dsp.py`): FIR order-200 bandpass via `filtfilt`, IIR notch, Welch
-  PSD — standard libraries only, with the documented `filtfilt` length requirement and explicit
+  PSD - standard libraries only, with the documented `filtfilt` length requirement and explicit
   causal fallback.
 - B. Synthetic ground-truth signals with known spectra (reproducible generator).
 - C. Windowing strategies: whole-signal (reference), naive per-window, overlap-add.
@@ -42,7 +42,7 @@ estimation. End each with the gap we fill.
   memory footprint, real-time factor, and seconds per EEG-hour.
 - G. Reproducibility: fixed environment + seeds, multi-subject CHB-MIT, released code.
 
-**IV. Results (~1.5 p)** — one subsection per result, each with a figure/table:
+**IV. Results (~1.5 p)** - one subsection per result, each with a figure/table:
 - R1 Overlap-add removes seam artifacts (`fig_seam`, `fig_profile`, `fig_summary`).
 - R2 The `filtfilt` length floor and the design criterion `(chunk + 2·overlap)·fs > 3·taps`.
 - R3 Magnitude fidelity + the ~500 ms event mis-timing on the causal fallback (`fig_magnitude`,
@@ -93,16 +93,16 @@ subjects; 18-recording runtime benchmark, timed without memory instrumentation).
 
 For each theme: **goal**, **databases/keywords**, **anchor references to verify**, **gap**.
 
-### Theme A — Streaming / web-based & real-time EEG visualization
+### Theme A - Streaming / web-based & real-time EEG visualization
 - Goal: position on-demand windowed serving of EEG; show prior systems rarely analyze DSP
   correctness under windowing.
-- Where/keywords: IEEE Xplore, PubMed — "web-based EEG viewer", "real-time EEG streaming",
+- Where/keywords: IEEE Xplore, PubMed - "web-based EEG viewer", "real-time EEG streaming",
   "browser EEG visualization", "tele-EEG", "EEG cloud platform".
 - Anchors to verify: EDF/EDF+ format (Kemp & Värri 1992; Kemp & Olivan 2003); browser
   physiological viewers.
 - Gap: correctness of filtering/features *under streaming windowing* is unstudied.
 
-### Theme B — Digital filtering of EEG: phase, zero-phase, and artifacts
+### Theme B - Digital filtering of EEG: phase, zero-phase, and artifacts
 - Goal: ground FIR/IIR, `filtfilt` (zero-phase) vs causal group delay, and the clinical risk of
   phase distortion / temporal smearing.
 - Where/keywords: "EEG filtering artifacts", "zero-phase filtfilt EEG", "group delay
@@ -112,7 +112,7 @@ For each theme: **goal**, **databases/keywords**, **anchor references to verify*
 - Gap: these warn about phase offline; none characterize the length-gated zero-phase→causal
   transition inside a streaming filter (our R2–R3).
 
-### Theme C — Block convolution & boundary artifacts (overlap-add / overlap-save)
+### Theme C - Block convolution & boundary artifacts (overlap-add / overlap-save)
 - Goal: formalize seam artifacts and the overlap-add fix.
 - Where/keywords: "overlap-add", "overlap-save", "block convolution", "edge effects windowed
   filtering".
@@ -120,7 +120,7 @@ For each theme: **goal**, **databases/keywords**, **anchor references to verify*
 - Gap: overlap-add is textbook, but its *parameterization against a zero-phase length floor* in
   clinical EEG streaming (our R1–R2 link) is not characterized.
 
-### Theme D — Spectral band power & quantitative EEG estimation
+### Theme D - Spectral band power & quantitative EEG estimation
 - Goal: ground Welch/multitaper relative band power; motivate the MNE equivalence and the
   cascaded-tapering finding.
 - Where/keywords: "Welch power spectral density EEG", "multitaper spectral estimation",
@@ -130,7 +130,7 @@ For each theme: **goal**, **databases/keywords**, **anchor references to verify*
 - Gap: implementation-level estimator errors (cascaded tapering) and their bias on clinical
   relative band power (our R5) are under-reported.
 
-### Theme E (cross-cutting) — Reproducibility & software correctness in clinical neuro-DSP
+### Theme E (cross-cutting) - Reproducibility & software correctness in clinical neuro-DSP
 - Goal: frame the benchmark stance and the medical-device angle.
 - Where/keywords: "reproducibility EEG analysis", "software correctness biomedical signal
   processing", "IEC 62304 medical device software".
@@ -143,4 +143,4 @@ For each theme: **goal**, **databases/keywords**, **anchor references to verify*
    semantics.
 3. Maintain `references.bib`; record for each: claim it supports, and which result/gap it maps to.
    Target ~15–20 references for a 4–6 page paper.
-4. Verify every citation (authors, year, venue) before inclusion — no unverified references.
+4. Verify every citation (authors, year, venue) before inclusion - no unverified references.

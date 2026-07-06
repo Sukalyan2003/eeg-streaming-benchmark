@@ -4,9 +4,9 @@ Filter fidelity and phase/temporal-distortion experiment.
 Two questions about the reference bandpass (`dsp.apply_bandpass`, FIR order 200) and notch
 (`dsp.apply_notch`, 50 Hz):
 
-  A. Magnitude fidelity — does the zero-phase (filtfilt) path realize the intended
+  A. Magnitude fidelity - does the zero-phase (filtfilt) path realize the intended
      passband/stopband, and does the notch reject 50 Hz?
-  B. Phase / temporal distortion — the filtfilt path is zero-phase (no time shift). When the
+  B. Phase / temporal distortion - the filtfilt path is zero-phase (no time shift). When the
      window is not longer than 3x(taps), filtfilt cannot run and a streaming filter must use a
      causal `lfilter`, whose linear-phase FIR group delay (~(taps-1)/2 samples) is NOT
      compensated, shifting events in time. We measure the temporal shift of a sharp transient

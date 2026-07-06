@@ -150,7 +150,7 @@ def main() -> None:
 
     # Aggregate across files: median of per-file medians, worst p95/max across files.
     datasets_seen = list(dict.fromkeys(r["dataset"] for r in rows))
-    lines = [f"True per-window latency benchmark — {DURATION_S:g} s segments, {CHUNK_S:g} s windows,",
+    lines = [f"True per-window latency benchmark - {DURATION_S:g} s segments, {CHUNK_S:g} s windows,",
              f"FIR order {ORDER}; each request filters all channels of one window. "
              f"60 Hz refresh budget = {REFRESH_BUDGET_MS:.1f} ms."]
     agg = {}

@@ -1,4 +1,4 @@
-Boundary-policy experiment — first/edge displayed window vs whole-signal zero-phase
+Boundary-policy experiment - first/edge displayed window vs whole-signal zero-phase
 reference. FIR order 200, 1 s window. Boundary RMSE in uV (mean +/- SD across channels x files).
 
 === chbmit ===

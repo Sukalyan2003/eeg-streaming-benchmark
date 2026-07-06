@@ -1,4 +1,4 @@
-# Option 2 (Non-AI / Classical-DSP) — Poster Plan
+# Option 2 (Non-AI / Classical-DSP) - Poster Plan
 
 **Working title:** *Keeping Windowed EEG Filtering Zero-Phase and Artifact-Free: Overlap-Add and
 the Zero-Phase Length Floor*
@@ -7,7 +7,7 @@ the Zero-Phase Length Floor*
 conference website).
 
 This poster isolates the sharpest result of the Option 2 paper (see `../README.md`): the
-time-domain filtering correctness story — overlap-add removes window-seam artifacts, and a
+time-domain filtering correctness story - overlap-add removes window-seam artifacts, and a
 zero-phase length floor governs whether windowed filtering is zero-phase at all. It drops the
 spectral-estimation arm (`R5`) of the paper.
 

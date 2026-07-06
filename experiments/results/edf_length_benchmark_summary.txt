@@ -1,4 +1,4 @@
-EDF-duration benchmark — end-to-end filtering + Welch band-power features.
+EDF-duration benchmark - end-to-end filtering + Welch band-power features.
 FIR order 200; aggregated as mean +/- SD across files per (dataset, duration, method).
 
 === chbmit: 10 files, fs=256.0 Hz, 8 channels ===
@@ -59,7 +59,7 @@ FIR order 200; aggregated as mean +/- SD across files per (dataset, duration, me
 
 Notes:
   - realtime_factor is whole-segment throughput (processing_s / duration_s).
-  - per_window_latency_ms is the amortized cost of one display window — the interactive
+  - per_window_latency_ms is the amortized cost of one display window - the interactive
     responsiveness proxy, which is the metric that matters for a streaming viewer.
   - scheduled_overlap is the deployable guardrail: the only streaming path that stays in
     the zero-phase regime; its extra cost over fixed_overlap is the price of correctness.

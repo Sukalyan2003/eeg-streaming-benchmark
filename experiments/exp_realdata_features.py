@@ -67,18 +67,18 @@ def main():
     n_sp, c_sp, w_sp = leakage(sparse)
 
     lines = [
-        f"Siena PN00-1.edf — fs={fs} Hz, {len(names)} channels, segment {SEG[0]:.0f}-{SEG[1]:.0f}s.",
+        f"Siena PN00-1.edf - fs={fs} Hz, {len(names)} channels, segment {SEG[0]:.0f}-{SEG[1]:.0f}s.",
         "",
         f"Channel split by label: {len(eeg)} EEG channels, {len(non_eeg)} non-EEG "
         f"({non_eeg}); real ECG channel = {ekg!r}.",
         "",
-        f"Montage hygiene — leakage of the real EKG into re-referenced {TARGET} "
+        f"Montage hygiene - leakage of the real EKG into re-referenced {TARGET} "
         f"(|corr(target, EKG)|):",
         f"  full montage   (N={n_full:>2} EEG ref): excluded={c_full:.3f}  included={w_full:.3f}",
         f"  sparse montage (N={n_sp:>2} EEG ref): excluded={c_sp:.3f}  included={w_sp:.3f}",
         "",
         "Confirms on real EEG: excluding the EKG leaves negligible ECG correlation; including it",
-        "injects a copy scaled by ~1/(N+1) — small for the full montage, large for the sparse",
+        "injects a copy scaled by ~1/(N+1) - small for the full montage, large for the sparse",
         "subset. Channels must be split into EEG / non-EEG before averaging.",
     ]
     (RESULTS / "realdata_features_summary.txt").write_text("\n".join(lines) + "\n")

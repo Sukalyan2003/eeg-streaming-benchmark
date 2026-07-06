@@ -1,4 +1,4 @@
-True per-window latency benchmark — 120 s segments, 1 s windows,
+True per-window latency benchmark - 120 s segments, 1 s windows,
 FIR order 200; each request filters all channels of one window. 60 Hz refresh budget = 16.7 ms.
 
 === chbmit: 10 files, fs=256.0 Hz, 8 channels ===

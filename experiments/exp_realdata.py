@@ -3,9 +3,9 @@ Real-data confirmation of Results 1-3 on CHB-MIT scalp EEG (Option 2 external va
 
 Uses a single open-access EDF (PhysioNet CHB-MIT chb01_01.edf, 256 Hz, bipolar montage) to
 confirm, on real clinical EEG rather than synthetic signals:
-  R1 — overlap-add reduces window-seam error vs naive per-window filtering;
-  R2 — the filtfilt pad length (3 x taps), shortest valid input, and small-chunk fallback regime;
-  R3 — the uncompensated group-delay shift of the fallback path.
+  R1 - overlap-add reduces window-seam error vs naive per-window filtering;
+  R2 - the filtfilt pad length (3 x taps), shortest valid input, and small-chunk fallback regime;
+  R3 - the uncompensated group-delay shift of the fallback path.
 
 The raw EDF is gitignored (experiments/data/). Download:
   curl -o data/chb01_01.edf https://physionet.org/files/chbmit/1.0.0/chb01/chb01_01.edf
@@ -85,7 +85,7 @@ def main():
     theo_ms = (len(taps) - 1) / 2 / fs * 1e3
 
     lines = [
-        f"CHB-MIT chb01_01.edf — fs={fs} Hz, channels={chans}, segment {SEG[0]:.0f}-{SEG[1]:.0f}s.",
+        f"CHB-MIT chb01_01.edf - fs={fs} Hz, channels={chans}, segment {SEG[0]:.0f}-{SEG[1]:.0f}s.",
         f"filtfilt padlen = {floor} samples ({floor/fs:.2f} s at {fs} Hz); "
         f"shortest valid input = {min_valid} samples ({min_valid/fs:.2f} s).",
         "",

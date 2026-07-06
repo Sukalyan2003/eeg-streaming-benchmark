@@ -1,4 +1,4 @@
-Montage hygiene (synthetic) — leakage of a wrongly-included ECG channel into an
+Montage hygiene (synthetic) - leakage of a wrongly-included ECG channel into an
 average-referenced EEG channel, by number of EEG reference channels N (the ECG
 enters the average with weight 1/(N+1)):
 

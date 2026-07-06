@@ -166,7 +166,7 @@ def main():
     err = np.abs(shift - theo)
     floor_s = float(rows[0]["floor_s"])
     lines = [
-        f"Second-dataset confirmation — Sleep-EDF Expanded (n={len(rows)} subjects, 100 Hz, "
+        f"Second-dataset confirmation - Sleep-EDF Expanded (n={len(rows)} subjects, 100 Hz, "
         f"8 s windows):",
         "",
         f"  zero-phase padlen = {rows[0]['floor_samples']} samples = {floor_s} s at 100 Hz; "

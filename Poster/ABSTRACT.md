@@ -1,4 +1,4 @@
-# Poster — Abstract, Contributions, Figures, Video
+# Poster - Abstract, Contributions, Figures, Video
 
 **SPMB Poster track** (short abstract + poster + summary video). This is the de-risked slice of
 the paper (`../paper.tex`), centered on the time-domain filtering correctness result: overlap-add
@@ -26,7 +26,7 @@ a shorter window cannot be zero-phase, so a streaming filter must fall back to a
 uncompensated group delay shifts events by up to ~500 ms (measured +391 ms on 256 Hz real EEG,
 matching theory). We show the pad length and the shift scale as `3×taps` and `(taps−1)/2/fs`
 across FIR orders, and that the overlap-add benefit is robust (34.3 ± 2.4 dB over 24 seeds). We
-distill a deterministic design rule—`(chunk + 2·overlap)·fs > 3·taps`—and implement a
+distill a deterministic design rule-`(chunk + 2·overlap)·fs > 3·taps`-and implement a
 safe-window scheduler that computes the needed overlap automatically. All code and figures are
 released; clinical EDFs are fetched at run time.
 
@@ -41,7 +41,7 @@ released; clinical EDFs are fetched at run time.
 
 ## Figures to feature (300 DPI, in `../experiments/results/`)
 - **Primary:** `fig_seam.png` (synthetic seam) + `fig_realdata_seam.png` (real CHB-MIT seam) side
-  by side — the headline before/after.
+  by side - the headline before/after.
 - **Mechanism:** `fig_transition.png` (boundary error collapses at the floor) and
   `fig_order_floor.png` (floor/shift scale with order).
 - **Secondary panel:** `fig_transient_shift.png` (the +500 ms event mis-timing).
@@ -49,9 +49,9 @@ released; clinical EDFs are fetched at run time.
 
 ## Summary-video outline (~3 min)
 1. (0:00–0:30) Problem: streaming viewers filter window-by-window; what can go wrong.
-2. (0:30–1:30) Overlap-add removes seam artifacts — show `fig_seam` / `fig_realdata_seam`,
+2. (0:30–1:30) Overlap-add removes seam artifacts - show `fig_seam` / `fig_realdata_seam`,
    state 34.7 dB (synthetic) and the larger real-EEG reduction at negligible latency.
-3. (1:30–2:20) The zero-phase length floor and the ~500 ms fallback shift — show
+3. (1:30–2:20) The zero-phase length floor and the ~500 ms fallback shift - show
    `fig_transient_shift` and `fig_transition`; give the `>3×taps` rule.
 4. (2:20–3:00) Takeaway: one inequality keeps streaming EEG filtering correct; code released.
 

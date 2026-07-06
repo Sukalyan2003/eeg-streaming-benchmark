@@ -13,12 +13,12 @@ offline reference:
 
 It runs three sweeps, all over real EDFs discovered under ``data/`` (no downloads here):
 
-  1. PRIMARY  — every EDF in each dataset x several segment durations x all methods, at a fixed
+  1. PRIMARY  - every EDF in each dataset x several segment durations x all methods, at a fixed
      FIR order. Aggregated to mean +/- SD across files per (dataset, duration, method). This is
      the headline duration-scaling result with error bars across subjects.
-  2. ORDER    — one representative file per dataset x one duration x several FIR orders x all
+  2. ORDER    - one representative file per dataset x one duration x several FIR orders x all
      methods. Shows how cost and the zero-phase guard scale with filter order.
-  3. CHANNELS — one representative file x one duration x several channel counts x all methods.
+  3. CHANNELS - one representative file x one duration x several channel counts x all methods.
      Shows how cost scales with the number of channels.
 
 Datasets are auto-detected from filename prefixes:
@@ -389,7 +389,7 @@ def write_primary_outputs(rows, durations, order) -> None:
                  and abs(kk[1] - duration_s) <= 1.0]
         return table[cands[0]] if cands else None
 
-    lines = ["EDF-duration benchmark — end-to-end filtering + Welch band-power features.",
+    lines = ["EDF-duration benchmark - end-to-end filtering + Welch band-power features.",
              f"FIR order {order}; aggregated as mean +/- SD across files per (dataset, duration, method)."]
     for ds in datasets:
         ds_rows = [r for r in rows if r["dataset"] == ds]
@@ -423,7 +423,7 @@ def write_primary_outputs(rows, durations, order) -> None:
         "",
         "Notes:",
         "  - realtime_factor is whole-segment throughput (processing_s / duration_s).",
-        "  - per_window_latency_ms is the amortized cost of one display window — the interactive",
+        "  - per_window_latency_ms is the amortized cost of one display window - the interactive",
         "    responsiveness proxy, which is the metric that matters for a streaming viewer.",
         "  - scheduled_overlap is the deployable guardrail: the only streaming path that stays in",
         "    the zero-phase regime; its extra cost over fixed_overlap is the price of correctness.",

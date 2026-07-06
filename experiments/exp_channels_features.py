@@ -68,7 +68,7 @@ def main():
         for r in rows:
             w.writerow(r)
 
-    lines = ["Montage hygiene (synthetic) — leakage of a wrongly-included ECG channel into an",
+    lines = ["Montage hygiene (synthetic) - leakage of a wrongly-included ECG channel into an",
              "average-referenced EEG channel, by number of EEG reference channels N (the ECG",
              "enters the average with weight 1/(N+1)):", ""]
     for r in rows:

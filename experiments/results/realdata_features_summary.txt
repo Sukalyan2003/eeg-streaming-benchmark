@@ -1,11 +1,11 @@
-Siena PN00-1.edf — fs=512 Hz, 35 channels, segment 100-220s.
+Siena PN00-1.edf - fs=512 Hz, 35 channels, segment 100-220s.
 
 Channel split by label: 31 EEG channels, 4 non-EEG (['EKG EKG', 'SPO2', 'HR', 'MK']); real ECG channel = 'EKG EKG'.
 
-Montage hygiene — leakage of the real EKG into re-referenced EEG C3 (|corr(target, EKG)|):
+Montage hygiene - leakage of the real EKG into re-referenced EEG C3 (|corr(target, EKG)|):
   full montage   (N=30 EEG ref): excluded=0.460  included=0.048
   sparse montage (N= 3 EEG ref): excluded=0.338  included=0.931
 
 Confirms on real EEG: excluding the EKG leaves negligible ECG correlation; including it
-injects a copy scaled by ~1/(N+1) — small for the full montage, large for the sparse
+injects a copy scaled by ~1/(N+1) - small for the full montage, large for the sparse
 subset. Channels must be split into EEG / non-EEG before averaging.
