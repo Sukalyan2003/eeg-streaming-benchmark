@@ -33,6 +33,11 @@ NOTCH = 50.0
 ORDERS = [50, 100, 150, 200, 250, 300, 400, 500]
 
 
+def style_axes(ax):
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+
 def rms(a): return float(np.sqrt(np.mean(np.square(a))))
 
 
@@ -148,7 +153,7 @@ def main():
         plt.annotate(f"{r['fallback_shift_ms']:.0f} ms shift", (r["order"], r["padlen_samples"]),
                      textcoords="offset points", xytext=(6, -12), fontsize=8)
     plt.xlabel("FIR order"); plt.ylabel("filtfilt pad length (samples)")
-    plt.title("filtfilt length floor", fontsize=10)
+    style_axes(plt.gca())
     plt.tight_layout(pad=0.35); plt.savefig(RESULTS / "fig_order_floor.png", dpi=300); plt.close()
 
     # fig: transition
@@ -158,10 +163,10 @@ def main():
     plt.semilogy(L, be, "o-", color="tab:purple")
     plt.axvline(min_valid_s, color="tab:red", ls="--", lw=1,
                 label=f"zero-phase floor = {min_valid_s:.2f} s")
-    plt.xlabel("filtered length: chunk + 2·overlap (s)")
+    plt.xlabel("filtered span: segment + 2×context (s)")
     plt.ylabel("boundary RMSE (µV, log)")
-    plt.title("Boundary error vs length", fontsize=10)
-    plt.legend(fontsize=8); plt.tight_layout(pad=0.35)
+    style_axes(plt.gca())
+    plt.legend(fontsize=8, frameon=False); plt.tight_layout(pad=0.35)
     plt.savefig(RESULTS / "fig_transition.png", dpi=300); plt.close()
     print(f"\nWrote regime_order_sweep.csv, regime_transition.csv, regime_summary.txt, "
           "fig_order_floor.png, fig_transition.png")

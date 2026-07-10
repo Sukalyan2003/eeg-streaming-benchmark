@@ -31,6 +31,11 @@ CHANS = ["FP1-F7", "F3-C3", "C3-P3", "P3-O1"]
 SEG = (600.0, 720.0)  # 120 s clean segment, away from the recording start
 
 
+def style_axes(ax):
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+
 def rms(a): return float(np.sqrt(np.mean(np.square(a))))
 
 
@@ -111,8 +116,9 @@ def main():
     plt.plot(t, olap[c][sl], color="tab:green", lw=1.1, label="overlap-add")
     plt.axvline(seam / fs, color="gray", ls="--", lw=1, label="window seam")
     plt.xlabel("time (s)"); plt.ylabel(f"{chans[c]} (µV)")
-    plt.title("Real EEG across a seam", fontsize=10)
-    plt.legend(fontsize=8); plt.tight_layout(pad=0.35)
+    style_axes(plt.gca())
+    plt.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, 1.18), ncol=2, frameon=False)
+    plt.tight_layout(pad=0.35)
     plt.savefig(RESULTS / "fig_realdata_seam.png", dpi=300); plt.close()
     print(f"\nWrote {RESULTS}/realdata_summary.txt, fig_realdata_seam.png")
 

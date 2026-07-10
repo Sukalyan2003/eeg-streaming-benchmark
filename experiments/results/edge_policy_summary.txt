@@ -19,4 +19,4 @@ reference. FIR order 200, 1 s window. Boundary RMSE in uV (mean +/- SD across ch
     reflect_zerophase:    1.427 +/-  1.610 uV  (23.9 dB vs causal)
     prefetch         :    0.001 +/-  0.001 uV  (88.6 dB vs causal)
 
-Takeaway: prefetch makes interior-of-record view edges essentially exact (real context); reflect_zerophase makes true record boundaries match offline practice (filtfilt also reflection-pads that boundary), both far below the causal fallback. Edges are therefore operationally safe with a boundary policy, not just interior-safe.
+Takeaway: prefetch makes interior-of-record view edges essentially exact (real context); at true record boundaries reflection avoids the causal fallback and reduces edge error (7-16 dB) but leaves a residual error (it only approximates the absent samples). Prefetch where context exists; reflect-pad at true boundaries; never silently take the causal path.

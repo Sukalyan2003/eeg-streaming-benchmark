@@ -433,8 +433,8 @@ def write_primary_outputs(rows, durations, order) -> None:
 
     # Figure: duration scaling per dataset, error bars across files, one panel per dataset.
     n = len(datasets)
-    fig, axes = plt.subplots(1, n, figsize=(4.8, 2.8), squeeze=False)
-    for ax, ds in zip(axes[0], datasets):
+    fig, axes = plt.subplots(1, n, figsize=(5.2, 2.8), squeeze=False)
+    for panel, (ax, ds) in enumerate(zip(axes[0], datasets)):
         for method in METHODS:
             xs, ys, es = [], [], []
             for duration_s in durations:
@@ -448,10 +448,13 @@ def write_primary_outputs(rows, durations, order) -> None:
                             label=METHOD_LABELS[method])
         ax.set_xlabel("duration (s)")
         ax.set_ylabel("processing time (s)")
-        ax.set_title(ds, fontsize=10)
+        ax.text(0.03, 0.94, chr(ord("A") + panel), transform=ax.transAxes,
+                va="top", ha="left", fontsize=9, fontweight="bold")
         ax.grid(True, alpha=0.3)
-        ax.legend(fontsize=7)
-    fig.tight_layout(pad=0.35)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.legend(fontsize=7, frameon=False)
+    fig.subplots_adjust(left=0.12, right=0.98, bottom=0.2, top=0.97, wspace=0.36)
     fig.savefig(RESULTS / "fig_edf_length_benchmark.png", dpi=300)
     plt.close(fig)
 
@@ -471,9 +474,11 @@ def write_order_outputs(rows) -> None:
                          "o-", label=f"{ds}:{METHOD_LABELS[method]}")
     plt.xlabel("FIR order")
     plt.ylabel("processing time (s)")
-    plt.title("FIR order", fontsize=9)
     plt.grid(True, alpha=0.3)
-    plt.legend(fontsize=6.5)
+    ax = plt.gca()
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    plt.legend(fontsize=6.5, frameon=False)
     plt.tight_layout(pad=0.25)
     plt.savefig(RESULTS / "fig_edf_order_scaling.png", dpi=300)
     plt.close()
@@ -491,9 +496,11 @@ def write_channel_outputs(rows) -> None:
                      "o-", label=METHOD_LABELS[method])
     plt.xlabel("channels")
     plt.ylabel("processing time (s)")
-    plt.title("Channel count", fontsize=9)
     plt.grid(True, alpha=0.3)
-    plt.legend(fontsize=6.5)
+    ax = plt.gca()
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    plt.legend(fontsize=6.5, frameon=False)
     plt.tight_layout(pad=0.25)
     plt.savefig(RESULTS / "fig_edf_channel_scaling.png", dpi=300)
     plt.close()

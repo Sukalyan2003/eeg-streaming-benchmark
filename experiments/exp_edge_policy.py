@@ -171,7 +171,7 @@ def main() -> None:
     # Figure: grouped bars per policy, per location, per dataset. Use a column-sized
     # side-by-side layout so labels remain readable after IEEE scaling.
     fig, axes = plt.subplots(1, len(datasets_seen), figsize=(4.8, 2.7), squeeze=False)
-    for ax, ds in zip(axes[0], datasets_seen):
+    for panel, (ax, ds) in enumerate(zip(axes[0], datasets_seen)):
         x = np.arange(len(locations))
         width = 0.25
         for i, pol in enumerate(policies):
@@ -180,8 +180,11 @@ def main() -> None:
             ax.bar(x + (i - 1) * width, means, width, yerr=errs, capsize=3, label=pol)
         ax.set_xticks(x); ax.set_xticklabels(["start", "interior"])
         ax.set_ylabel("RMSE (µV)")
-        ax.set_title(ds, fontsize=10)
-        ax.legend(fontsize=6.5)
+        ax.text(0.03, 0.94, chr(ord("A") + panel), transform=ax.transAxes,
+                va="top", ha="left", fontsize=9, fontweight="bold")
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.legend(fontsize=6.5, frameon=False)
     fig.tight_layout(pad=0.25)
     fig.savefig(RESULTS / "fig_edge_policy.png", dpi=300)
     plt.close(fig)

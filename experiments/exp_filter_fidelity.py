@@ -36,6 +36,11 @@ FILTFILT_MIN = 3 * len(TAPS)
 FILTFILT_VALID_MIN = FILTFILT_MIN + 1
 
 
+def style_axes(ax):
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+
 def measure_magnitude():
     """Multitone probe: amplitude gain per frequency through the whole-signal (zero-phase) path."""
     dur = 60.0
@@ -132,24 +137,25 @@ def main():
     plt.axvline(50, color="tab:red", ls="--", lw=1, label="50 Hz notch")
     plt.ylim(-80, 5); plt.xlim(0, 65)
     plt.xlabel("frequency (Hz)"); plt.ylabel("gain (dB)")
-    plt.title("Zero-phase magnitude response", fontsize=10)
-    plt.legend(fontsize=8); plt.tight_layout(pad=0.35)
+    style_axes(plt.gca())
+    plt.legend(fontsize=8, frameon=False); plt.tight_layout(pad=0.35)
     plt.savefig(RESULTS / "fig_magnitude.png", dpi=300); plt.close()
 
     # ---- fig: transient shift ----
     sl = slice(int((t0 - 0.8) * FS), int((t0 + 0.8) * FS))
-    plt.figure(figsize=(4.2, 2.6))
-    plt.plot(t[sl], x[sl] / np.max(np.abs(x[sl])), color="k", lw=1, alpha=0.5, label="input (spike)")
-    plt.plot(t[sl], y_zero[sl] / np.nanmax(np.abs(y_zero[sl])), color="tab:green",
-             label=f"zero-phase, {shift_zero_ms:+.0f} ms")
+    fig, ax = plt.subplots(figsize=(4.6, 2.6))
+    ax.plot(t[sl], x[sl] / np.max(np.abs(x[sl])), color="k", lw=1, alpha=0.5, label="input (spike)")
+    ax.plot(t[sl], y_zero[sl] / np.nanmax(np.abs(y_zero[sl])), color="tab:green",
+            label=f"zero-phase, {shift_zero_ms:+.0f} ms")
     yfb = y_fb[sl]
-    plt.plot(t[sl], yfb / np.nanmax(np.abs(yfb)), color="tab:red",
-             label=f"fallback, {shift_fb_ms:+.0f} ms")
-    plt.axvline(t0, color="gray", ls="--", lw=1, label="true spike time")
-    plt.xlabel("time (s)"); plt.ylabel("normalized amplitude")
-    plt.title("Event timing fallback", fontsize=10)
-    plt.legend(fontsize=8); plt.tight_layout(pad=0.35)
-    plt.savefig(RESULTS / "fig_transient_shift.png", dpi=300); plt.close()
+    ax.plot(t[sl], yfb / np.nanmax(np.abs(yfb)), color="tab:red",
+            label=f"fallback, {shift_fb_ms:+.0f} ms")
+    ax.axvline(t0, color="gray", ls="--", lw=1, label="true spike time")
+    ax.set_xlabel("time (s)"); ax.set_ylabel("normalized amplitude")
+    style_axes(ax)
+    ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, 1.22), ncol=2, frameon=False)
+    fig.subplots_adjust(left=0.18, right=0.98, bottom=0.22, top=0.76)
+    fig.savefig(RESULTS / "fig_transient_shift.png", dpi=300); plt.close(fig)
     print(f"\nWrote {RESULTS}/fidelity_metrics.csv, fidelity_summary.txt, "
           "fig_magnitude.png, fig_transient_shift.png")
 

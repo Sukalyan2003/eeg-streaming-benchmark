@@ -48,6 +48,11 @@ FILTFILT_PADLEN = filtfilt_padlen_samples(TAPS)       # 606 samples = 3.03 s @ 2
 FILTFILT_MIN = filtfilt_min_valid_samples(TAPS)       # shortest valid zero-phase input
 
 
+def style_axes(ax):
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+
 def rms(a):
     return float(np.sqrt(np.mean(np.square(a))))
 
@@ -166,8 +171,10 @@ def _fig_seam(sig, gt, fs):
     plt.plot(t, olap[sl], label="overlap-add", lw=1.2, color="tab:green", alpha=0.9)
     plt.axvline(seam / fs, color="gray", ls="--", lw=1, label="window seam")
     plt.xlabel("time (s)"); plt.ylabel("amplitude (µV)")
-    plt.title("Filtered EEG across a seam", fontsize=10)
-    plt.legend(fontsize=8, loc="lower left"); plt.tight_layout(pad=0.35)
+    ax = plt.gca()
+    style_axes(ax)
+    plt.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, 1.18), ncol=2, frameon=False)
+    plt.tight_layout(pad=0.35)
     plt.savefig(RESULTS / "fig_seam.png", dpi=300); plt.close()
 
 
@@ -193,8 +200,8 @@ def _fig_profile(sig, gt, fs):
     plt.plot(lag, prof_o, label="overlap-add (0.5 s)", color="tab:green")
     plt.axvline(0, color="gray", ls="--", lw=1, label="seam")
     plt.xlabel("time relative to seam (ms)"); plt.ylabel("mean |error| vs ground truth (µV)")
-    plt.title("Reconstruction error concentrated at window seams")
-    plt.legend(fontsize=8); plt.tight_layout()
+    style_axes(plt.gca())
+    plt.legend(fontsize=8, frameon=False); plt.tight_layout()
     plt.savefig(RESULTS / "fig_profile.png", dpi=300); plt.close()
 
 
@@ -208,15 +215,17 @@ def _fig_summary(rows):
     ax[0].bar(x + bw/2, olap_b, bw, label="overlap-add 0.5 s", color="tab:green")
     ax[0].set_xticks(x); ax[0].set_xticklabels([f"{w:g}s" for w in wins])
     ax[0].set_ylabel("boundary RMSE vs ground truth (µV)")
-    ax[0].set_xlabel("display window size"); ax[0].set_title("Boundary error by window size")
-    ax[0].legend(fontsize=8)
+    ax[0].set_xlabel("display window size")
+    ax[0].legend(fontsize=8, frameon=False)
+    style_axes(ax[0])
 
     naive_l = [next(r for r in rows if r["window_s"] == w and r["method"] == "naive")["ms_per_window"] for w in wins]
     olap_l = [next(r for r in rows if r["window_s"] == w and r["overlap_s"] == 0.5)["ms_per_window"] for w in wins]
     ax[1].plot(wins, naive_l, "o-", label="naive", color="tab:red")
     ax[1].plot(wins, olap_l, "o-", label="overlap-add 0.5 s", color="tab:green")
     ax[1].set_xlabel("display window size (s)"); ax[1].set_ylabel("latency (ms per window)")
-    ax[1].set_title("Per-window filtering latency"); ax[1].legend(fontsize=8)
+    ax[1].legend(fontsize=8, frameon=False)
+    style_axes(ax[1])
     plt.tight_layout(); plt.savefig(RESULTS / "fig_summary.png", dpi=300); plt.close()
 
 

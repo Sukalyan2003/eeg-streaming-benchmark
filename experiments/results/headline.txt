@@ -1,5 +1,5 @@
 RESULT 1 (zero-phase regime, win=8 s):
-  boundary RMSE naive=14.930 uV -> overlap(0.5 s)=0.275 uV : reduction 34.7 dB at +2% latency (0.554 -> 0.566 ms/window).
+  boundary RMSE naive=14.930 uV -> overlap(0.5 s)=0.275 uV : reduction 34.7 dB at +-7% latency (0.633 -> 0.589 ms/window).
 
 RESULT 2 (zero-phase length floor):
   An order-200 FIR (202 taps) has filtfilt padlen=606 samples; zero-phase filtering needs at least 607 samples (3.04 s). Shorter windows must use a causal filter instead.
